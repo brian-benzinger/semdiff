@@ -1,24 +1,87 @@
 /**
- * Stage 3 — classify (ADR-0003, ADR-0004). LLM-backed and gated.
+ * Stage 3 — classify (ADR-0003, ADR-0004). The gated, structured LLM step.
  *
- * Only `candidate` pairings from `align` reach the classifier; `unchanged` and
- * `trivial-change` pairings never cost a model call. Each candidate is sent to
- * the injected `Classifier`; the verdict is validated, retried on failure, then
- * degraded to a flagged `needs-review` result — never dropped or fabricated.
- * Verdicts are folded into `Change` objects. Skeleton: not yet implemented.
+ * The caller passes only genuine `candidate` pairs — align has already kept
+ * unchanged and trivial-change content away from the model. For each pair this
+ * stage asks the injected `Classifier` for a verdict, validates it against the
+ * schema, retries once on a malformed response or a provider error, and finally
+ * degrades to a flagged `needs-review` change — never dropping a pair and never
+ * fabricating a verdict (ADR-0004). The provider stays injected; this module
+ * imports no SDK, so the engine has no LLM-infra dependency.
+ *
+ * Caching (ADR-0004's content-addressed cache) belongs with the provider
+ * implementation, not this stage, and is out of scope here.
  */
 import type { Change } from "../schema.ts";
-import type { CandidatePair, Classifier } from "../classifier.ts";
+import { needsReviewVerdict, type CandidatePair, type Classifier, type ClassifierVerdict } from "../classifier.ts";
+
+/** Attempts per pair: one initial call plus one retry (ADR-0004). */
+const MAX_ATTEMPTS = 2;
+
+/** Verdicts below this confidence are flagged for review (ADR-0006). */
+const MIN_TRUSTED_CONFIDENCE = 0.5;
 
 /**
- * Classify changed candidate pairs into `Change`s using the injected
- * classifier. Skeleton: not yet implemented.
+ * Classify changed candidate pairs into `Change`s using the injected classifier.
+ * Order is preserved and spans are carried through from the candidates untouched.
  */
 export async function classify(
   candidates: readonly CandidatePair[],
   classifier: Classifier,
 ): Promise<readonly Change[]> {
-  void candidates;
-  void classifier;
-  throw new Error("not implemented: classify");
+  const changes: Change[] = [];
+  for (const pair of candidates) {
+    changes.push(await classifyPair(pair, classifier));
+  }
+  return changes;
+}
+
+async function classifyPair(pair: CandidatePair, classifier: Classifier): Promise<Change> {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    let verdict: unknown;
+    try {
+      verdict = await classifier.classify(pair);
+    } catch {
+      continue; // provider error / timeout / rate limit — retry, then needs-review
+    }
+    if (isValidVerdict(verdict)) {
+      return toChange(pair, verdict);
+    }
+  }
+  return needsReviewChange(pair);
+}
+
+/** Runtime guard: the model response is untrusted until validated (ADR-0004). */
+function isValidVerdict(value: unknown): value is ClassifierVerdict {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  if (v.classification !== "substantive" && v.classification !== "cosmetic") return false;
+  if (typeof v.confidence !== "number" || !Number.isFinite(v.confidence)) return false;
+  if (v.confidence < 0 || v.confidence > 1) return false;
+  if (v.description !== undefined && typeof v.description !== "string") return false;
+  return true;
+}
+
+function toChange(pair: CandidatePair, verdict: ClassifierVerdict): Change {
+  const base = {
+    type: "modification" as const,
+    classification: verdict.classification,
+    spanA: pair.spanA,
+    spanB: pair.spanB,
+    confidence: verdict.confidence,
+    needsReview: verdict.confidence < MIN_TRUSTED_CONFIDENCE,
+  };
+  return verdict.description === undefined ? base : { ...base, description: verdict.description };
+}
+
+function needsReviewChange(pair: CandidatePair): Change {
+  const { classification, confidence } = needsReviewVerdict();
+  return {
+    type: "modification",
+    classification,
+    spanA: pair.spanA,
+    spanB: pair.spanB,
+    confidence,
+    needsReview: true,
+  };
 }

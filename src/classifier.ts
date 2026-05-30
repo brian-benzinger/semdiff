@@ -45,13 +45,13 @@ export function createDefaultClassifier(config: { readonly modelId?: string }): 
 }
 
 /**
- * Build the never-drop / never-fabricate fallback verdict (ADR-0004). When a
- * model response fails schema validation, retries are exhausted, or the
- * provider errors, the `classify` stage folds this into a `Change` with
- * `needsReview` set — rather than dropping the pair or guessing. Skeleton: not
- * yet implemented.
+ * The never-drop / never-fabricate fallback verdict (ADR-0004). When a model
+ * response fails schema validation, retries are exhausted, or the provider
+ * errors, the `classify` stage records this conservative verdict — `substantive`
+ * (so the change is surfaced for review, not hidden) with zero confidence — and
+ * flags the resulting change for review, rather than dropping the pair or
+ * guessing a cosmetic/substantive call.
  */
-export function needsReviewVerdict(reason: string): ClassifierVerdict {
-  void reason;
-  throw new Error("not implemented: needsReviewVerdict");
+export function needsReviewVerdict(): ClassifierVerdict {
+  return { classification: "substantive", confidence: 0 };
 }
