@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "provenance": {
+    "modelId": "claude-opus-4-8",
+    "promptVersion": "0",
+    "engineVersion": "0.0.0"
+  },
+  "changes": [
+    {
+      "type": "modification",
+      "classification": "substantive",
+      "spanA": { "start": 42, "end": 78 },
+      "spanB": { "start": 42, "end": 73 },
+      "description": "Refund window shortened from 30 days to 14 days.",
+      "confidence": 0.94,
+      "needsReview": false
+    },
+    {
+      "type": "deletion",
+      "classification": "substantive",
+      "spanA": { "start": 120, "end": 168 },
+      "spanB": null,
+      "confidence": 0.86,
+      "needsReview": false
+    },
+    {
+      "type": "insertion",
+      "classification": "cosmetic",
+      "spanA": null,
+      "spanB": { "start": 200, "end": 214 },
+      "confidence": 0.41,
+      "needsReview": true
+    }
+  ],
+  "summary": {
+    "substantive": 2,
+    "cosmetic": 1,
+    "byType": { "insertion": 1, "deletion": 1, "modification": 1, "move": 0 },
+    "needsReview": 1
+  }
+}

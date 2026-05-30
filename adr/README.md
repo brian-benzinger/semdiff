@@ -23,6 +23,7 @@ The format is a lightweight [Michael Nygard][nygard] / [MADR][madr] hybrid:
 | [0004](0004-llm-classification-and-deterministic-gating.md) | LLM-backed classification with deterministic gating | Accepted |
 | [0005](0005-eval-harness-and-determinism-layer.md) | The eval harness and determinism layer are the core contribution | Accepted |
 | [0006](0006-structured-diff-output-schema.md) | Stable structured diff schema as the public contract | Accepted |
+| [0007](0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input | Accepted |
 
 ## Conventions
 

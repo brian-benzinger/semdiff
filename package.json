@@ -1,0 +1,25 @@
+{
+  "name": "semdiff",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Meaning-aware diff engine: surfaces substantive prose changes and suppresses cosmetic ones. Library + CLI.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "semdiff": "./src/cli.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.7.0"
+  }
+}
