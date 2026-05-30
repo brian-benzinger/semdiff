@@ -44,15 +44,6 @@ export interface Classifier {
 export const DEFAULT_MODEL_ID = "claude-opus-4-8";
 
 /**
- * Construct the default classifier (the latest capable Claude model, ADR-0004)
- * so consumers need not own provider wiring. Skeleton: not yet implemented.
- */
-export function createDefaultClassifier(config: { readonly modelId?: string }): Classifier {
-  void config;
-  throw new Error("not implemented: createDefaultClassifier");
-}
-
-/**
  * The never-drop / never-fabricate fallback verdict (ADR-0004). When a model
  * response fails schema validation, retries are exhausted, or the provider
  * errors, the `classify` stage records this conservative verdict — `substantive`

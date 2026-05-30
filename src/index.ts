@@ -9,13 +9,15 @@ export * from "./schema.ts";
 export * from "./classifier.ts";
 
 import { SCHEMA_VERSION, type Change, type DiffSummary, type Provenance, type StructuredDiff } from "./schema.ts";
-import { createDefaultClassifier, DEFAULT_MODEL_ID, type CandidatePair, type Classifier } from "./classifier.ts";
+import { DEFAULT_MODEL_ID, type CandidatePair, type Classifier } from "./classifier.ts";
+import { createDefaultClassifier } from "./classifiers/claude.ts";
 import { ENGINE_VERSION, DEFAULT_PROMPT_VERSION } from "./version.ts";
 import { segment, type SegmentGranularity, type Unit } from "./pipeline/segment.ts";
 import { align } from "./pipeline/align.ts";
 import { classify } from "./pipeline/classify.ts";
 
 export { ENGINE_VERSION, DEFAULT_PROMPT_VERSION };
+export { createDefaultClassifier, type DefaultClassifierConfig } from "./classifiers/claude.ts";
 
 /** Options for a `diff` run. Omit a field to take its default. */
 export interface DiffOptions {

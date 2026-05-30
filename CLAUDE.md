@@ -48,6 +48,7 @@ architecture, read the relevant record. The current decisions:
 | [0006](adr/0006-structured-diff-output-schema.md) | Stable structured diff schema is the public contract |
 | [0007](adr/0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input |
 | [0008](adr/0008-vitest-and-per-file-coverage-gate.md) | Vitest with a per-file coverage gate (95% line / 90% branch) |
+| [0009](adr/0009-default-classifier-over-fetch.md) | The default classifier calls the Anthropic API over fetch (zero-dependency) |
 
 If you make a decision that changes or supersedes one of these, **add a new
 ADR** — do not silently edit an accepted one. Follow the conventions in

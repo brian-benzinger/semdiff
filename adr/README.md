@@ -25,6 +25,7 @@ The format is a lightweight [Michael Nygard][nygard] / [MADR][madr] hybrid:
 | [0006](0006-structured-diff-output-schema.md) | Stable structured diff schema as the public contract | Accepted |
 | [0007](0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input | Accepted |
 | [0008](0008-vitest-and-per-file-coverage-gate.md) | Vitest with a per-file coverage gate (95% line / 90% branch) | Accepted |
+| [0009](0009-default-classifier-over-fetch.md) | The default classifier calls the Anthropic API over fetch (zero-dependency) | Accepted |
 
 ## Conventions
 
