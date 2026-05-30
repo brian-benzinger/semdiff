@@ -65,8 +65,14 @@ describe("diff (ADR-0003, ADR-0006)", () => {
     expect(result.summary.substantive).toBe(1);
   });
 
-  it("uses the default classifier (which throws) when a candidate needs one and none is injected", async () => {
-    await expect(diff("The cap is 30%.", "The cap is 40%.")).rejects.toThrow(/not implemented: createDefaultClassifier/);
+  it("falls back to the default classifier when none is injected (no key → API-key error)", async () => {
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      await expect(diff("The cap is 30%.", "The cap is 40%.")).rejects.toThrow(/no API key/);
+    } finally {
+      if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved;
+    }
   });
 
   it("flags a low-confidence modification for review in the summary", async () => {
