@@ -46,6 +46,7 @@ architecture, read the relevant record. The current decisions:
 | [0004](adr/0004-llm-classification-and-deterministic-gating.md) | LLM as a gated, structured classifier |
 | [0005](adr/0005-eval-harness-and-determinism-layer.md) | Eval + determinism layer is the core contribution |
 | [0006](adr/0006-structured-diff-output-schema.md) | Stable structured diff schema is the public contract |
+| [0007](adr/0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input |
 
 If you make a decision that changes or supersedes one of these, **add a new
 ADR** — do not silently edit an accepted one. Follow the conventions in
