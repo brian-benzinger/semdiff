@@ -77,6 +77,10 @@ ADR** — do not silently edit an accepted one. Follow the conventions in
   The eval harness is separate and may touch the real model.
 - **Commits:** clear, descriptive messages. Branch from the development branch;
   do not commit directly to `main`.
+- **Always raise a PR.** Every change ships as a pull request — never push
+  straight to `main`, and don't leave work sitting on a branch without one.
+  After pushing a feature branch, open the PR (or update the existing one) so
+  the change is reviewable.
 - **Determinism in tooling:** prefer the project's dedicated tools/scripts;
   pin versions; avoid introducing nondeterminism into builds or tests.
 
