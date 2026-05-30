@@ -18,9 +18,8 @@ import { describe, it, expect } from "vitest";
 
 import { SCHEMA_VERSION } from "../src/schema.ts";
 import { ENGINE_VERSION, DEFAULT_PROMPT_VERSION } from "../src/version.ts";
-import { createDefaultClassifier, needsReviewVerdict, type Classifier } from "../src/classifier.ts";
+import { createDefaultClassifier } from "../src/classifier.ts";
 import { diff } from "../src/index.ts";
-import { classify } from "../src/pipeline/classify.ts";
 
 describe("public surface (skeleton)", () => {
   it("exposes the version and contract constants", () => {
@@ -33,18 +32,7 @@ describe("public surface (skeleton)", () => {
     expect(() => createDefaultClassifier({})).toThrow(/not implemented/);
   });
 
-  it("needsReviewVerdict is not implemented yet", () => {
-    expect(() => needsReviewVerdict("provider error")).toThrow(/not implemented/);
-  });
-
   it("diff rejects as not implemented yet", async () => {
     await expect(diff("a", "b")).rejects.toThrow(/not implemented/);
-  });
-
-  it("classify rejects as not implemented yet", async () => {
-    const stubClassifier: Classifier = {
-      classify: () => Promise.reject(new Error("unused: classify throws before calling the provider")),
-    };
-    await expect(classify([], stubClassifier)).rejects.toThrow(/not implemented/);
   });
 });
