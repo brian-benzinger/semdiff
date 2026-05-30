@@ -20,7 +20,6 @@ import { SCHEMA_VERSION } from "../src/schema.ts";
 import { ENGINE_VERSION, DEFAULT_PROMPT_VERSION } from "../src/version.ts";
 import { createDefaultClassifier, needsReviewVerdict, type Classifier } from "../src/classifier.ts";
 import { diff } from "../src/index.ts";
-import { align } from "../src/pipeline/align.ts";
 import { classify } from "../src/pipeline/classify.ts";
 
 describe("public surface (skeleton)", () => {
@@ -36,10 +35,6 @@ describe("public surface (skeleton)", () => {
 
   it("needsReviewVerdict is not implemented yet", () => {
     expect(() => needsReviewVerdict("provider error")).toThrow(/not implemented/);
-  });
-
-  it("align is not implemented yet", () => {
-    expect(() => align([], [])).toThrow(/not implemented/);
   });
 
   it("diff rejects as not implemented yet", async () => {
