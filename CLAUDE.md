@@ -47,6 +47,7 @@ architecture, read the relevant record. The current decisions:
 | [0005](adr/0005-eval-harness-and-determinism-layer.md) | Eval + determinism layer is the core contribution |
 | [0006](adr/0006-structured-diff-output-schema.md) | Stable structured diff schema is the public contract |
 | [0007](adr/0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input |
+| [0008](adr/0008-vitest-and-per-file-coverage-gate.md) | Vitest with a per-file coverage gate (95% line / 90% branch) |
 
 If you make a decision that changes or supersedes one of these, **add a new
 ADR** — do not silently edit an accepted one. Follow the conventions in
@@ -73,9 +74,12 @@ ADR** — do not silently edit an accepted one. Follow the conventions in
 
 - **Language:** TypeScript on a recent LTS Node (ADR 0002). The same artifact
   must run locally (CLI) and on AWS Lambda (library).
-- **Tests:** deterministic stages (`segment`, `align`) get golden-fixture unit
-  tests with no model. The classifier is tested against a mocked `Classifier`.
-  The eval harness is separate and may touch the real model.
+- **Tests:** [Vitest](https://vitest.dev) (`npm test`), enforced by a per-file
+  coverage gate of 95% line / 90% branch (ADR 0008); `all: true` means an
+  untested module counts as 0% and fails. Deterministic stages (`segment`,
+  `align`) get golden-fixture unit tests with no model; the classifier is tested
+  against a mocked `Classifier`. The eval harness is separate and may touch the
+  real model.
 - **Commits:** clear, descriptive messages. Branch from the development branch;
   do not commit directly to `main`.
 - **Always raise a PR.** Every change ships as a pull request — never push

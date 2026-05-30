@@ -8,8 +8,7 @@
  * only be exercised once `segment` lands (see TODO below). Until then this pins
  * the structural invariant the contract commits to today.
  */
-import { describe, it } from "node:test";
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Span, StructuredDiff } from "../src/schema.ts";
@@ -19,8 +18,8 @@ const example = JSON.parse(
 ) as StructuredDiff;
 
 function assertHalfOpen(span: Span): void {
-  assert.ok(Number.isInteger(span.start) && span.start >= 0, "start is a non-negative integer");
-  assert.ok(Number.isInteger(span.end) && span.end >= span.start, "end >= start (half-open)");
+  expect(Number.isInteger(span.start) && span.start >= 0).toBe(true);
+  expect(Number.isInteger(span.end) && span.end >= span.start).toBe(true);
 }
 
 describe("span offset semantics (ADR-0007)", () => {
@@ -34,8 +33,8 @@ describe("span offset semantics (ADR-0007)", () => {
   it("a modification locates the change in both inputs", () => {
     for (const change of example.changes) {
       if (change.type === "modification") {
-        assert.notEqual(change.spanA, null);
-        assert.notEqual(change.spanB, null);
+        expect(change.spanA).not.toBeNull();
+        expect(change.spanB).not.toBeNull();
       }
     }
   });
