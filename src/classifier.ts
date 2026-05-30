@@ -36,6 +36,14 @@ export interface Classifier {
 }
 
 /**
+ * Default model id (the latest capable Claude, ADR-0004). Stamped into run
+ * provenance, and used by the default classifier when the caller does not pin
+ * one. Callers that inject their own provider should pass `modelId` for an
+ * accurate provenance stamp.
+ */
+export const DEFAULT_MODEL_ID = "claude-opus-4-8";
+
+/**
  * Construct the default classifier (the latest capable Claude model, ADR-0004)
  * so consumers need not own provider wiring. Skeleton: not yet implemented.
  */
