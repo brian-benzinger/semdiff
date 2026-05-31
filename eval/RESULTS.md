@@ -31,6 +31,7 @@ substantive (noise).
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-05-31 | 0.1.0 | claude-opus-4-8 | 0 | 14 | 1.00 | 1.00 | 1.00 | 1.00 | 0 | 0 | 0.955 |
 | 2026-05-31 | 0.1.0 | claude-opus-4-8 | 0 | 32 | 1.00 | 1.00 | 1.00 | 1.00 | 0 | 0 | 0.945 |
+| 2026-05-31 | 0.1.0 | claude-haiku-4-5 | 0 | 32 | 0.97 | 1.00 | 0.94 | 0.97 | 1 | 0 | 0.958 |
 
 ### 2026-05-31 — engine 0.1.0
 
@@ -154,3 +155,80 @@ ok   delete: removed benefit: substantive (0.97)
 > The `model:` / `corpus:` header on this block is the runner output, not a hand
 > label — the first run that lacked it is why a later "haiku" attempt couldn't be
 > trusted (the override wasn't wired, so it was opus again). It is now.
+
+### 2026-05-31 — engine 0.1.0 (Haiku 4.5, 32-case corpus)
+
+First cross-model run, scoring `claude-haiku-4-5` against the same 32 cases via
+the `MODEL` override. Haiku scores **31/32** — and the one it misses is the
+signal the boundary cases were built to surface.
+
+- **The miss is the costly kind.** `boundary now inclusive` (`over $100 → $100 or
+  more`) is called **cosmetic** — Haiku read the exclusive→inclusive boundary
+  shift as a rewording. That is a missed *substantive* change (recall 0.94),
+  exactly the expensive error under ADR-0005; with zero false flags, Haiku's
+  failure mode here is under-detection, not noise. Opus classified the same case
+  correctly.
+- **It is confidently wrong.** `meanConfidenceIncorrect` is **0.95**, within a
+  hair of `meanConfidenceCorrect` (0.958). Haiku's confidence is flat
+  (~0.95–0.99 across the whole corpus) and does not fall on the call it gets
+  wrong, so the `needsReview` gate (confidence < 0.5) would **not** have flagged
+  the miss. By contrast Opus's confidence tracked difficulty (0.85 on the
+  subtlest calls) and it classified the boundary case correctly at 0.92.
+
+**Read for the default-model choice.** Where missed substance is the expensive
+error (ADR-0005), Haiku's combination of a substantive miss *and* uncalibrated
+confidence is disqualifying as the default — the cheap model is wrong on exactly
+the kind of case you most need caught, and its confidence won't warn you. Opus's
+calibration is what makes the confidence/`needsReview` signal trustworthy, and is
+worth the premium for this use. Haiku stays viable where cost dominates and a
+boundary miss is acceptable.
+
+```
+model: claude-haiku-4-5
+corpus: 32 cases
+
+ok   threshold raised: substantive (0.99)
+ok   deadline shortened: substantive (0.99)
+ok   negation added: substantive (0.99)
+ok   scope narrowed: substantive (0.99)
+ok   casing only: cosmetic (0.99)
+ok   punctuation only: cosmetic (0.95)
+ok   reworded, same meaning: cosmetic (0.95)
+ok   renumbered clause: cosmetic (0.95)
+ok   insert: new obligation: substantive (0.95)
+ok   insert: added exception: substantive (0.95)
+ok   insert: boilerplate closing: cosmetic (0.85)
+ok   delete: removed condition: substantive (0.95)
+ok   delete: removed exemption: substantive (0.95)
+ok   delete: boilerplate greeting: cosmetic (0.85)
+ok   number formatting only: cosmetic (0.95)
+ok   equivalent duration: cosmetic (0.95)
+ok   spelled-out count: cosmetic (0.95)
+ok   equivalent currency notation: cosmetic (0.95)
+ok   double negative simplified: cosmetic (0.95)
+ok   active to passive voice: cosmetic (0.95)
+ok   synonym, same threshold: cosmetic (0.95)
+ok   permission to requirement: substantive (0.95)
+ok   recommendation to requirement: substantive (0.95)
+ok   timing inverted: substantive (0.99)
+MISS boundary now inclusive: cosmetic (0.95)
+ok   small number change: substantive (0.99)
+ok   quantifier widened: substantive (0.99)
+ok   and to or: substantive (0.99)
+ok   include to exclude: substantive (0.99)
+ok   vague to specific deadline: substantive (0.99)
+ok   insert: convenience disclaimer: cosmetic (0.95)
+ok   delete: removed benefit: substantive (0.95)
+
+{
+  "total": 32,
+  "accuracy": 0.96875,
+  "precision": 1,
+  "recall": 0.9444444444444444,
+  "f1": 0.9714285714285714,
+  "missedSubstantive": 1,
+  "falseFlags": 0,
+  "meanConfidenceCorrect": 0.9577419354838703,
+  "meanConfidenceIncorrect": 0.95
+}
+```
