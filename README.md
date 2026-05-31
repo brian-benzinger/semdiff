@@ -58,6 +58,16 @@ accuracy (`npm run eval`). Architecture decisions live in [`adr/`](adr/);
 the working agreement for contributors (human and AI) is in
 [`CLAUDE.md`](CLAUDE.md).
 
+## Install
+
+```sh
+npm install semdiff
+```
+
+The published package ships compiled ESM with bundled type declarations and has
+**zero runtime dependencies** beyond the LLM provider you configure (ADR-0009).
+It runs on Node ≥ 20, both locally (CLI) and on AWS Lambda (library).
+
 ## Usage
 
 As a library:
@@ -72,12 +82,15 @@ for (const change of result.changes) {
 }
 ```
 
-As a CLI:
+As a CLI (installed globally, or via `npx`):
 
 ```sh
-node src/cli.ts before.txt after.txt                      # structured diff as JSON
-node src/cli.ts before.txt after.txt --granularity clause
+npx semdiff before.txt after.txt                      # structured diff as JSON
+npx semdiff before.txt after.txt --granularity clause
 ```
+
+From a checkout of this repo you can run the source directly without building —
+`node src/cli.ts before.txt after.txt` — on a Node that strips TypeScript types.
 
 Only genuinely-changed pairs reach the model; identical, cosmetic, inserted, or
 deleted content is classified locally and needs no API key.
