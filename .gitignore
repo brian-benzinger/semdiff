@@ -6,6 +6,9 @@ dist/
 .env
 .env.local
 
+# Packed tarballs from `npm pack` / `npm pack --dry-run` verification.
+*.tgz
+
 # Raw eval output is nondeterministic (it calls the model); only curated
 # snapshots in eval/RESULTS.md are tracked (ADR-0005).
 *.eval.json
