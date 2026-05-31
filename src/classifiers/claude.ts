@@ -36,8 +36,12 @@ const MAX_RETRY_DELAY_MS = 8_000;
  * Static classification instructions — the stable, cacheable prompt prefix
  * (ADR-0009). Domain-neutral (ADR-0001). Recall-biased per ADR-0005: when
  * uncertain, prefer "substantive" so a real change is surfaced, not hidden.
+ *
+ * Exported so a release-gating test can pin its hash to `DEFAULT_PROMPT_VERSION`
+ * (ADR-0005): editing this text without bumping the version would let a persisted
+ * verdict cache serve stale results. Not part of the package's public `exports`.
  */
-const SYSTEM_PROMPT = [
+export const SYSTEM_PROMPT = [
   "You are a careful classifier inside a meaning-aware diff engine. You are given",
   "two versions of one short span of prose: version A (before) and version B",
   "(after). Decide whether the change from A to B is:",
