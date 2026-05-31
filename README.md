@@ -96,6 +96,83 @@ Changed content — insertions, deletions, and modifications — is classified b
 the model; identical, cosmetic, and relocated (moved) content is classified
 locally and needs no API key.
 
+## Configuration
+
+The only thing `semdiff` needs to configure is the LLM provider. The common case
+is **zero code**: set your key in the environment and the defaults handle the
+rest.
+
+### 1. Your API key (the only required setup)
+
+```sh
+export ANTHROPIC_API_KEY=sk-ant-...      # macOS/Linux
+$env:ANTHROPIC_API_KEY = "sk-ant-..."    # PowerShell
+```
+
+Both the library and the CLI read `ANTHROPIC_API_KEY` automatically — no other
+setup is needed. The key is only used when a change actually has to reach the
+model; identical, cosmetic, and moved content never needs it.
+
+### 2. Override the model or pass the key explicitly
+
+The default model is **`claude-opus-4-8`** (the latest capable Claude). Override
+it — or supply the key in code instead of the environment — per call:
+
+```ts
+import { diff } from "semdiff";
+
+const result = await diff(before, after, {
+  modelId: "claude-sonnet-4-6",          // any Anthropic model id; default: claude-opus-4-8
+});
+```
+
+To pass the key in code (e.g. from your own secret store rather than the
+environment), construct the default classifier explicitly and inject it:
+
+```ts
+import { diff, createDefaultClassifier } from "semdiff";
+
+const classifier = createDefaultClassifier({
+  apiKey: mySecret,                       // default: process.env.ANTHROPIC_API_KEY
+  modelId: "claude-opus-4-8",             // optional
+});
+const result = await diff(before, after, { classifier });
+```
+
+> The `modelId` you pass is also stamped into the result's `provenance`, so a
+> diff always records which model produced it (ADR-0004).
+
+### 3. Use a different provider entirely
+
+`semdiff` depends on a small `Classifier` interface, not on Anthropic. To use
+another provider (OpenAI, a local model, a mock for tests), implement
+`classify` and inject it — the engine keeps its zero-dependency runtime and never
+constructs the default classifier:
+
+```ts
+import { diff, type Classifier } from "semdiff";
+
+const classifier: Classifier = {
+  async classify(pair) {
+    // pair: { type, a, b, spanA, spanB }  →  call your provider here
+    return { classification: "substantive", confidence: 0.9, description: "…" };
+  },
+};
+const result = await diff(before, after, { classifier });
+```
+
+Wrap any classifier with `withCache` so identical changes are classified once
+(ADR-0004):
+
+```ts
+import { diff, createDefaultClassifier, withCache } from "semdiff";
+
+const classifier = withCache(createDefaultClassifier({}), {
+  modelId: "claude-opus-4-8",
+  promptVersion: "0",
+});
+```
+
 ## Design at a glance
 
 ```
