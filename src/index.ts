@@ -18,6 +18,7 @@ import { classify } from "./pipeline/classify.ts";
 
 export { ENGINE_VERSION, DEFAULT_PROMPT_VERSION };
 export { createDefaultClassifier, type DefaultClassifierConfig } from "./classifiers/claude.ts";
+export { withCache, createMemoryCache, cacheKey, type VerdictCache, type CacheOptions } from "./cache.ts";
 
 /** Options for a `diff` run. Omit a field to take its default. */
 export interface DiffOptions {
