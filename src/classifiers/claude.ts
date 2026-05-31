@@ -5,8 +5,8 @@
  * It uses the global `fetch` (no SDK), so the engine keeps ZERO runtime
  * dependencies; a consumer that needs a different provider or transport injects
  * its own `Classifier` instead. Determinism is steered by a pinned model, a
- * pinned prompt, and low effort — Opus 4.8 removed the `temperature` parameter,
- * so there is no `temperature: 0`. The verdict is returned through a constrained
+ * pinned prompt, and low effort where the model accepts it — Opus 4.8 removed the
+ * `temperature` parameter, so there is no `temperature: 0`. The verdict is returned through a constrained
  * JSON schema and then RE-VALIDATED by the classify stage, so this module can
  * parse leniently: any malformed response surfaces as a thrown error that the
  * classify stage retries, then degrades to needs-review.
@@ -90,7 +90,7 @@ export function createDefaultClassifier(config: DefaultClassifierConfig): Classi
         body: JSON.stringify(buildRequest(modelId, pair)),
       });
       if (!response.ok) {
-        throw new Error(`Anthropic API error ${response.status}`);
+        throw new Error(`Anthropic API error ${response.status}: ${await response.text()}`);
       }
       return parseVerdict(await response.json());
     },
@@ -99,16 +99,33 @@ export function createDefaultClassifier(config: DefaultClassifierConfig): Classi
 
 /** Build the Messages API request body for one candidate pair. */
 function buildRequest(modelId: string, pair: CandidatePair): unknown {
+  const outputConfig: Record<string, unknown> = {
+    format: { type: "json_schema", schema: VERDICT_SCHEMA },
+  };
+  // `effort` steers determinism and cost, but only Opus and Sonnet 4.6 accept
+  // it; Haiku and Sonnet 4.5 reject it with a 400. Include it only where
+  // supported so overriding `modelId` to a cheaper model (an eval sweep, say)
+  // does not fail. Omitting it is harmless; sending it where unsupported is not.
+  if (modelSupportsEffort(modelId)) {
+    outputConfig.effort = "low";
+  }
   return {
     model: modelId,
     max_tokens: MAX_TOKENS,
-    output_config: {
-      effort: "low",
-      format: { type: "json_schema", schema: VERDICT_SCHEMA },
-    },
+    output_config: outputConfig,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: `Change type: ${pair.type}.\nA:\n${pair.a}\n\nB:\n${pair.b}` }],
   };
+}
+
+/**
+ * Whether `output_config.effort` is accepted by `modelId`. Opus (4.5+) and
+ * Sonnet 4.6 support it; Haiku and Sonnet 4.5 return a 400. Biased to omit when
+ * unsure — a missing effort still succeeds, an unsupported effort does not — so
+ * a future model silently runs without effort rather than erroring.
+ */
+function modelSupportsEffort(modelId: string): boolean {
+  return modelId.startsWith("claude-opus-") || modelId.startsWith("claude-sonnet-4-6");
 }
 
 /** Extract the structured verdict from the Messages API response (lenient). */
