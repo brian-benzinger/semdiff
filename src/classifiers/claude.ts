@@ -121,8 +121,13 @@ export function createDefaultClassifier(config: DefaultClassifierConfig): Classi
  * are thrown as plain `Error`s and propagate without a retry.
  */
 class TransientError extends Error {
-  constructor(message: string, readonly retryAfterMs: number) {
+  // A field declaration + assignment, not a constructor parameter property:
+  // parameter properties are runtime syntax that Node's strip-only type removal
+  // cannot handle, which would break the zero-build `node src/...` path (ADR-0002).
+  readonly retryAfterMs: number;
+  constructor(message: string, retryAfterMs: number) {
     super(message);
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
