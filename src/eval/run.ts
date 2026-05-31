@@ -6,11 +6,17 @@
  * This makes real model calls, so set ANTHROPIC_API_KEY:
  *   ANTHROPIC_API_KEY=sk-... node src/eval/run.ts
  *
+ * Set MODEL to score a non-default model against the same corpus (it defaults to
+ * the engine default). The resolved model id is printed at the top of the run so
+ * the output is self-identifying — paste it anywhere and it records what produced
+ * it:
+ *   ANTHROPIC_API_KEY=sk-... MODEL=claude-haiku-4-5 node src/eval/run.ts
+ *
  * Excluded from the coverage gate (it hits the network); the scorer and corpus
  * are unit-tested. A future version wires this into CI behind a key.
  */
 import { createDefaultClassifier } from "../classifiers/claude.ts";
-import type { CandidatePair } from "../classifier.ts";
+import { DEFAULT_MODEL_ID, type CandidatePair } from "../classifier.ts";
 import { CORPUS, type EvalCase } from "./corpus.ts";
 import { scoreEval, type ScoredCase } from "./score.ts";
 
@@ -27,7 +33,9 @@ function toCandidatePair(testCase: EvalCase): CandidatePair {
 }
 
 async function runEval(): Promise<void> {
-  const classifier = createDefaultClassifier({});
+  const modelId = process.env.MODEL ?? DEFAULT_MODEL_ID;
+  const classifier = createDefaultClassifier({ modelId });
+  process.stdout.write(`model: ${modelId}\ncorpus: ${CORPUS.length} cases\n\n`);
   const scored: ScoredCase[] = [];
   for (const testCase of CORPUS) {
     const verdict = await classifier.classify(toCandidatePair(testCase));
