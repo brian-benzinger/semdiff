@@ -25,7 +25,8 @@ export interface DiffOptions {
   /**
    * Provider used to classify changed pairs. Defaults to the latest capable
    * Claude model via `createDefaultClassifier` (ADR-0004) — which is only
-   * constructed when a substantive modification candidate actually exists.
+   * constructed when there is a change to classify (a modification, insertion,
+   * or deletion). Identical, cosmetic, and moved content needs no provider.
    */
   readonly classifier?: Classifier;
   /** Model id stamped into provenance; also passed to the default classifier. */
@@ -40,8 +41,8 @@ export interface DiffOptions {
  * Produce a meaning-aware structured diff of two inputs. Runs
  * segment -> align -> classify, stamps run provenance, and assembles the
  * `StructuredDiff`. A classifier is constructed and called only when there is at
- * least one two-sided modification candidate, so diffs with no substantive
- * pairing need no provider.
+ * least one change to classify (a modification, insertion, or deletion), so
+ * diffs of identical, cosmetic, or merely relocated content need no provider.
  */
 export async function diff(a: string, b: string, options?: DiffOptions): Promise<StructuredDiff> {
   const granularity = options?.segmentGranularity ?? "sentence";
@@ -49,8 +50,13 @@ export async function diff(a: string, b: string, options?: DiffOptions): Promise
 
   const candidates: CandidatePair[] = [];
   for (const pair of pairs) {
-    if (pair.tag === "candidate" && pair.a !== null && pair.b !== null) {
-      candidates.push({ a: pair.a.text, b: pair.b.text, spanA: pair.a.span, spanB: pair.b.span });
+    if (pair.tag !== "candidate") continue;
+    if (pair.a !== null && pair.b !== null) {
+      candidates.push({ type: "modification", a: pair.a.text, b: pair.b.text, spanA: pair.a.span, spanB: pair.b.span });
+    } else if (pair.b !== null) {
+      candidates.push({ type: "insertion", a: "", b: pair.b.text, spanA: null, spanB: pair.b.span });
+    } else {
+      candidates.push({ type: "deletion", a: pair.a!.text, b: "", spanA: pair.a!.span, spanB: null });
     }
   }
 
@@ -68,13 +74,9 @@ export async function diff(a: string, b: string, options?: DiffOptions): Promise
       changes.push(cosmeticModification(pair.a!, pair.b!));
     } else if (pair.tag === "move") {
       changes.push(moveChange(pair.a!, pair.b!));
-    } else if (pair.a !== null && pair.b !== null) {
+    } else {
       changes.push(classified[classifiedIndex]!);
       classifiedIndex += 1;
-    } else if (pair.b !== null) {
-      changes.push(insertion(pair.b));
-    } else {
-      changes.push(deletion(pair.a!));
     }
   }
 
@@ -98,19 +100,6 @@ function cosmeticModification(a: Unit, b: Unit): Change {
  */
 function moveChange(a: Unit, b: Unit): Change {
   return { type: "move", classification: "cosmetic", spanA: a.span, spanB: b.span, confidence: 1, needsReview: false };
-}
-
-/**
- * A one-sided structural change. Inserting or deleting a whole lexical unit is
- * treated as substantive by default — surfacing it, never hiding it (ADR-0005);
- * semantic judgment of one-sided changes is a future refinement.
- */
-function insertion(unit: Unit): Change {
-  return { type: "insertion", classification: "substantive", spanA: null, spanB: unit.span, confidence: 1, needsReview: false };
-}
-
-function deletion(unit: Unit): Change {
-  return { type: "deletion", classification: "substantive", spanA: unit.span, spanB: null, confidence: 1, needsReview: false };
 }
 
 function summarize(changes: readonly Change[]): DiffSummary {

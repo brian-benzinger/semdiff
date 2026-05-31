@@ -19,6 +19,7 @@ async function runEval(): Promise<void> {
   const scored: ScoredCase[] = [];
   for (const testCase of CORPUS) {
     const pair: CandidatePair = {
+      type: "modification",
       a: testCase.a,
       b: testCase.b,
       spanA: { start: 0, end: testCase.a.length },

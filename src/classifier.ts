@@ -9,16 +9,29 @@
  */
 import type { Classification, Span } from "./schema.ts";
 
-/** A single changed pair handed to the classifier for a verdict. */
+/**
+ * The structural kind of a candidate change. A subset of `ChangeType`: `move`
+ * is detected deterministically before classification (ADR-0010), so it never
+ * reaches the model.
+ */
+export type CandidateType = "insertion" | "deletion" | "modification";
+
+/**
+ * A single changed pair handed to the classifier for a verdict. One side may be
+ * absent: for an insertion `a` is `""` and `spanA` is `null`; for a deletion
+ * `b` is `""` and `spanB` is `null` (ADR-0011).
+ */
 export interface CandidatePair {
-  /** The unit text from input A. */
+  /** The structural kind of change. */
+  readonly type: CandidateType;
+  /** The unit text from input A; `""` for an insertion. */
   readonly a: string;
-  /** The unit text from input B. */
+  /** The unit text from input B; `""` for a deletion. */
   readonly b: string;
-  /** Location of `a` within input A (literal character offsets, ADR-0007). */
-  readonly spanA: Span;
-  /** Location of `b` within input B (literal character offsets, ADR-0007). */
-  readonly spanB: Span;
+  /** Location of `a` within input A (literal character offsets, ADR-0007); `null` for an insertion. */
+  readonly spanA: Span | null;
+  /** Location of `b` within input B (literal character offsets, ADR-0007); `null` for a deletion. */
+  readonly spanB: Span | null;
 }
 
 /** The schema-validated verdict for one candidate pair. */

@@ -27,6 +27,7 @@ The format is a lightweight [Michael Nygard][nygard] / [MADR][madr] hybrid:
 | [0008](0008-vitest-and-per-file-coverage-gate.md) | Vitest with a per-file coverage gate (95% line / 90% branch) | Accepted |
 | [0009](0009-default-classifier-over-fetch.md) | The default classifier calls the Anthropic API over fetch (zero-dependency) | Accepted |
 | [0010](0010-move-detection-by-content-match.md) | Move detection by content match (deterministic, cosmetic) | Accepted |
+| [0011](0011-classify-one-sided-changes.md) | Classify one-sided changes (insertions/deletions) through the model | Accepted |
 
 ## Conventions
 

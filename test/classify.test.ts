@@ -5,10 +5,16 @@
  */
 import { describe, it, expect } from "vitest";
 import { classify } from "../src/pipeline/classify.ts";
-import type { CandidatePair, Classifier, ClassifierVerdict } from "../src/classifier.ts";
+import type { CandidatePair, CandidateType, Classifier, ClassifierVerdict } from "../src/classifier.ts";
 
-function pair(a: string, b: string): CandidatePair {
-  return { a, b, spanA: { start: 0, end: a.length }, spanB: { start: 10, end: 10 + b.length } };
+function pair(a: string, b: string, type: CandidateType = "modification"): CandidatePair {
+  return {
+    type,
+    a,
+    b,
+    spanA: type === "insertion" ? null : { start: 0, end: a.length },
+    spanB: type === "deletion" ? null : { start: 10, end: 10 + b.length },
+  };
 }
 
 /** Mock classifier that yields the given behaviours per call (repeating the last). */
@@ -112,5 +118,15 @@ describe("classify (ADR-0004)", () => {
     );
     expect(changes).toHaveLength(2);
     expect(changes.map((c) => [c.spanA?.end, c.spanB?.end])).toEqual([[1, 11], [2, 12]]);
+  });
+
+  it("carries the candidate type and nullable spans through to the change (ADR-0011)", async () => {
+    const verdict = classifierOf({ classification: "substantive", confidence: 0.9 });
+    const [inserted] = await classify([pair("", "added", "insertion")], verdict);
+    expect(inserted?.type).toBe("insertion");
+    expect(inserted?.spanA).toBeNull();
+    const [deleted] = await classify([pair("removed", "", "deletion")], verdict);
+    expect(deleted?.type).toBe("deletion");
+    expect(deleted?.spanB).toBeNull();
   });
 });
