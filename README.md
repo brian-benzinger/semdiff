@@ -54,7 +54,8 @@ The default classifier calls the Anthropic API (set `ANTHROPIC_API_KEY`), or you
 can inject your own `Classifier`, optionally wrapped with `withCache` so
 identical changes are classified once (ADR-0004). The eval harness
 ([`adr/0005`](adr/0005-eval-harness-and-determinism-layer.md)) scores classifier
-accuracy (`npm run eval`). Architecture decisions live in [`adr/`](adr/);
+accuracy (`npm run eval`); curated result snapshots are in
+[`eval/RESULTS.md`](eval/RESULTS.md). Architecture decisions live in [`adr/`](adr/);
 the working agreement for contributors (human and AI) is in
 [`CLAUDE.md`](CLAUDE.md).
 

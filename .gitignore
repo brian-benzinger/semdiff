@@ -5,3 +5,8 @@ dist/
 .DS_Store
 .env
 .env.local
+
+# Raw eval output is nondeterministic (it calls the model); only curated
+# snapshots in eval/RESULTS.md are tracked (ADR-0005).
+*.eval.json
+eval-results/
