@@ -108,9 +108,10 @@ input B ─┘             (cheap,    (LLM, gated   (substantive vs
 - **Segment** both texts into comparable units (clauses / sentences).
 - **Align** units across the two versions with a cheap, deterministic local pass
   (no LLM): exact and near-exact matches are settled here.
-- **Classify** only the genuinely changed pairs with the LLM, returning a
-  structured, schema-validated verdict. Unchanged and trivially-changed pairs
-  never reach the model, which bounds cost and nondeterminism.
+- **Classify** the genuinely changed units with the LLM — modifications,
+  insertions, and deletions alike (ADR-0011) — returning a structured,
+  schema-validated verdict. Unchanged, trivially-changed, and relocated (moved)
+  units never reach the model, which bounds cost and nondeterminism.
 - **Emit** a stable, versioned structured diff (JSON); the CLI prints that JSON,
   and any human-readable rendering is a pure function of it (ADR-0006).
 
@@ -127,6 +128,8 @@ The full reasoning is in the ADRs:
 | [0007](adr/0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input |
 | [0008](adr/0008-vitest-and-per-file-coverage-gate.md) | Vitest with a per-file coverage gate |
 | [0009](adr/0009-default-classifier-over-fetch.md) | The default classifier calls the Anthropic API over fetch |
+| [0010](adr/0010-move-detection-by-content-match.md) | Move detection by content match (deterministic, cosmetic) |
+| [0011](adr/0011-classify-one-sided-changes.md) | Classify one-sided changes (insertions/deletions) through the model |
 
 ## License
 

@@ -96,9 +96,16 @@ function emitGap(gapA: readonly Unit[], gapB: readonly Unit[], out: AlignedPair[
 
 /**
  * Re-pair content-identical deletion/insertion survivors into `move`s (ADR-0010).
- * A deletion is matched to the first not-yet-consumed insertion with the same
- * normalized key; the move keeps the deletion's old position (`a`) and the
- * insertion's new position (`b`). Unmatched insertions/deletions are left as-is.
+ * A deletion is matched to an insertion with the same normalized key; the move
+ * keeps the deletion's old position (`a`) and the insertion's new position (`b`).
+ * Unmatched insertions/deletions are left as-is.
+ *
+ * Matching is content-only and 1:1 — it weighs neither distance nor document
+ * structure (ADR-0010). Two consequences follow from keying on normalized text:
+ * when several insertions share a key the LAST one wins (the map overwrites), and
+ * if the same text genuinely appears as an unrelated deletion AND insertion they
+ * collapse into one `move`. Acceptable at sentence/clause granularity, where
+ * identical-content survivors are overwhelmingly true relocations.
  */
 function detectMoves(pairs: readonly AlignedPair[]): readonly AlignedPair[] {
   const insertionByKey = new Map<string, number>();
