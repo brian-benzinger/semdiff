@@ -48,10 +48,38 @@ pointer back to the exact spans involved.
 
 ## Status
 
-Pre-implementation. This commit captures the **design** only: the architecture
-decisions live in [`adr/`](adr/) and the working agreement for contributors
-(human and AI) lives in [`CLAUDE.md`](CLAUDE.md). Code follows the decisions
-recorded there.
+Implemented (v0, pre-1.0). The pipeline — segment → align → classify → structured
+diff — works end to end behind a per-file coverage gate (95% line / 90% branch).
+The default classifier calls the Anthropic API (set `ANTHROPIC_API_KEY`), or you
+can inject your own `Classifier`. Still ahead: the eval harness
+([`adr/0005`](adr/0005-eval-harness-and-determinism-layer.md)) and
+content-addressed verdict caching. Architecture decisions live in [`adr/`](adr/);
+the working agreement for contributors (human and AI) is in
+[`CLAUDE.md`](CLAUDE.md).
+
+## Usage
+
+As a library:
+
+```ts
+import { diff } from "semdiff";
+
+// ANTHROPIC_API_KEY in the environment, or inject your own Classifier.
+const result = await diff(before, after);
+for (const change of result.changes) {
+  console.log(change.type, change.classification, change.description ?? "");
+}
+```
+
+As a CLI:
+
+```sh
+node src/cli.ts before.txt after.txt                      # structured diff as JSON
+node src/cli.ts before.txt after.txt --granularity clause
+```
+
+Only genuinely-changed pairs reach the model; identical, cosmetic, inserted, or
+deleted content is classified locally and needs no API key.
 
 ## Design at a glance
 
@@ -68,7 +96,8 @@ input B ─┘             (cheap,    (LLM, gated   (substantive vs
 - **Classify** only the genuinely changed pairs with the LLM, returning a
   structured, schema-validated verdict. Unchanged and trivially-changed pairs
   never reach the model, which bounds cost and nondeterminism.
-- **Emit** a structured diff (stable JSON) plus human-readable CLI output.
+- **Emit** a stable, versioned structured diff (JSON); the CLI prints that JSON,
+  and any human-readable rendering is a pure function of it (ADR-0006).
 
 The full reasoning is in the ADRs:
 
@@ -80,6 +109,9 @@ The full reasoning is in the ADRs:
 | [0004](adr/0004-llm-classification-and-deterministic-gating.md) | LLM-backed classification, gated and structured |
 | [0005](adr/0005-eval-harness-and-determinism-layer.md) | The eval + determinism layer is the core contribution |
 | [0006](adr/0006-structured-diff-output-schema.md) | Stable structured diff schema as the public contract |
+| [0007](adr/0007-character-offset-span-semantics.md) | Spans are half-open character offsets into the literal input |
+| [0008](adr/0008-vitest-and-per-file-coverage-gate.md) | Vitest with a per-file coverage gate |
+| [0009](adr/0009-default-classifier-over-fetch.md) | The default classifier calls the Anthropic API over fetch |
 
 ## License
 
