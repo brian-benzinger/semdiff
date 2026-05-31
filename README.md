@@ -51,9 +51,10 @@ pointer back to the exact spans involved.
 Implemented (v0, pre-1.0). The pipeline — segment → align → classify → structured
 diff — works end to end behind a per-file coverage gate (95% line / 90% branch).
 The default classifier calls the Anthropic API (set `ANTHROPIC_API_KEY`), or you
-can inject your own `Classifier`. Still ahead: the eval harness
-([`adr/0005`](adr/0005-eval-harness-and-determinism-layer.md)) and
-content-addressed verdict caching. Architecture decisions live in [`adr/`](adr/);
+can inject your own `Classifier`, optionally wrapped with `withCache` so
+identical changes are classified once (ADR-0004). The eval harness
+([`adr/0005`](adr/0005-eval-harness-and-determinism-layer.md)) scores classifier
+accuracy (`npm run eval`). Architecture decisions live in [`adr/`](adr/);
 the working agreement for contributors (human and AI) is in
 [`CLAUDE.md`](CLAUDE.md).
 
