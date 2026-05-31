@@ -66,6 +66,7 @@ describe("createDefaultClassifier (ADR-0009)", () => {
     const body = requestBody(mock);
     expect(body.model).toBe(DEFAULT_MODEL_ID);
     expect(body.output_config.format.type).toBe("json_schema");
+    expect(body.output_config.effort).toBe("low");
     expect(body.system[0].cache_control).toEqual({ type: "ephemeral" });
     expect(body.messages[0].content).toContain("30%");
     expect(body.messages[0].content).toContain("40%");
@@ -77,9 +78,28 @@ describe("createDefaultClassifier (ADR-0009)", () => {
     expect(requestBody(mock).model).toBe("claude-custom");
   });
 
+  it("includes effort for an effort-capable override (Sonnet 4.6)", async () => {
+    const mock = stubFetch(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    await createDefaultClassifier({ apiKey: "k", modelId: "claude-sonnet-4-6" }).classify(PAIR);
+    expect(requestBody(mock).output_config.effort).toBe("low");
+  });
+
+  it("omits effort for a model that rejects it (Haiku 4.5)", async () => {
+    const mock = stubFetch(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    await createDefaultClassifier({ apiKey: "k", modelId: "claude-haiku-4-5" }).classify(PAIR);
+    const body = requestBody(mock);
+    expect(body.output_config.effort).toBeUndefined();
+    expect(body.output_config.format.type).toBe("json_schema");
+  });
+
   it("throws on a non-ok HTTP status", async () => {
     stubFetch(new Response("", { status: 500 }));
     await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow(/Anthropic API error 500/);
+  });
+
+  it("surfaces the response body in a non-ok error (diagnosable 400s)", async () => {
+    stubFetch(new Response("effort: unsupported parameter", { status: 400 }));
+    await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow(/400: effort: unsupported parameter/);
   });
 
   it("throws when the response has no content field", async () => {
