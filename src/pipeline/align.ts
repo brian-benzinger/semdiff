@@ -8,14 +8,17 @@
  *   - `trivial-change` — paired after normalization (whitespace, casing,
  *                        punctuation, and leading enumeration collapsed) but the
  *                        literal text differs. A cosmetic edit.
+ *   - `move`           — a relocation of identical content (ADR-0010): a deletion
+ *                        whose normalized content matches an insertion elsewhere,
+ *                        re-paired into one change. Both old (`a`) and new (`b`)
+ *                        positions are present; the text is unchanged.
  *   - `candidate`      — a genuine change needing downstream judgment: a paired
  *                        modification (both sides present), or a one-sided
  *                        insertion (`a === null`) or deletion (`b === null`).
  *
  * Pairing runs a longest-common-subsequence match over the normalized keys, then
- * pairs the survivors in each gap positionally when they share a token. Move
- * detection is deferred: a moved unit currently surfaces as a deletion plus an
- * insertion (ADR-0003's known reconciliation risk).
+ * pairs the survivors in each gap positionally when they share a token. A final
+ * pass re-pairs content-identical deletion/insertion survivors into `move`s.
  *
  * Normalization is used ONLY to decide matches; it never touches the `Unit`
  * offsets, so the literal-input invariant (ADR-0007) is preserved untouched.
@@ -23,7 +26,7 @@
 import type { Unit } from "./segment.ts";
 
 /** How an aligned pairing relates its A and B units. */
-export type AlignmentTag = "unchanged" | "trivial-change" | "candidate";
+export type AlignmentTag = "unchanged" | "trivial-change" | "move" | "candidate";
 
 /** A pairing of units across inputs; either side may be `null`. */
 export interface AlignedPair {
@@ -66,7 +69,7 @@ export function align(unitsA: readonly Unit[], unitsB: readonly Unit[]): readonl
     j = mj + 1;
   }
   emitGap(unitsA.slice(i), unitsB.slice(j), out);
-  return out;
+  return detectMoves(out);
 }
 
 /**
@@ -89,6 +92,42 @@ function emitGap(gapA: readonly Unit[], gapB: readonly Unit[], out: AlignedPair[
   }
   for (; k < gapA.length; k++) out.push({ tag: "candidate", a: gapA[k]!, b: null });
   for (; k < gapB.length; k++) out.push({ tag: "candidate", a: null, b: gapB[k]! });
+}
+
+/**
+ * Re-pair content-identical deletion/insertion survivors into `move`s (ADR-0010).
+ * A deletion is matched to the first not-yet-consumed insertion with the same
+ * normalized key; the move keeps the deletion's old position (`a`) and the
+ * insertion's new position (`b`). Unmatched insertions/deletions are left as-is.
+ */
+function detectMoves(pairs: readonly AlignedPair[]): readonly AlignedPair[] {
+  const insertionByKey = new Map<string, number>();
+  pairs.forEach((pair, index) => {
+    if (pair.tag === "candidate" && pair.a === null) {
+      insertionByKey.set(normalize(pair.b!), index);
+    }
+  });
+
+  const moveTo = new Map<number, number>();
+  pairs.forEach((pair, index) => {
+    if (pair.tag === "candidate" && pair.b === null) {
+      const key = normalize(pair.a!);
+      const insertionIndex = insertionByKey.get(key);
+      if (insertionIndex !== undefined) {
+        insertionByKey.delete(key);
+        moveTo.set(index, insertionIndex);
+      }
+    }
+  });
+
+  if (moveTo.size === 0) return pairs;
+
+  const movedInsertions = new Set(moveTo.values());
+  return pairs.flatMap((pair, index) => {
+    if (movedInsertions.has(index)) return [];
+    const insertionIndex = moveTo.get(index);
+    return insertionIndex === undefined ? [pair] : [{ tag: "move" as const, a: pair.a, b: pairs[insertionIndex]!.b }];
+  });
 }
 
 /** Normalized match key: lower-cased, enumerator-stripped, punctuation-free. */
