@@ -32,6 +32,7 @@ substantive (noise).
 | 2026-05-31 | 0.1.0 | claude-opus-4-8 | 0 | 14 | 1.00 | 1.00 | 1.00 | 1.00 | 0 | 0 | 0.955 |
 | 2026-05-31 | 0.1.0 | claude-opus-4-8 | 0 | 32 | 1.00 | 1.00 | 1.00 | 1.00 | 0 | 0 | 0.945 |
 | 2026-05-31 | 0.1.0 | claude-haiku-4-5 | 0 | 32 | 0.97 | 1.00 | 0.94 | 0.97 | 1 | 0 | 0.958 |
+| 2026-05-31 | 0.1.0 | claude-sonnet-4-6 | 0 | 32 | 0.97 | 1.00 | 0.94 | 0.97 | 1 | 0 | 0.936 |
 
 ### 2026-05-31 — engine 0.1.0
 
@@ -229,6 +230,93 @@ ok   delete: removed benefit: substantive (0.95)
   "missedSubstantive": 1,
   "falseFlags": 0,
   "meanConfidenceCorrect": 0.9577419354838703,
+  "meanConfidenceIncorrect": 0.95
+}
+```
+
+### 2026-05-31 — engine 0.1.0 (Sonnet 4.6, 32-case corpus)
+
+Third cross-model run: `claude-sonnet-4-6`, the mid-tier option ($15 vs $25 per
+1M output — about 60% of Opus's cost), against the same 32 cases. Sonnet also scores **31/32**, on the
+*same* miss as Haiku — `boundary now inclusive` called **cosmetic** at 0.95 — but
+the calibration picture is the opposite of Haiku's, and it corrects the earlier
+read.
+
+- **Sonnet is genuinely calibrated.** Its confidence on correct calls spans
+  0.60–1.00, and the low end is exactly the subtle cases: boilerplate deletion
+  (0.60), the convenience-disclaimer insertion (0.60), boilerplate closing
+  (0.70), the renumbered clause (0.75). `meanConfidenceCorrect` is **0.936** —
+  *lower* than Haiku's 0.958, and that is the healthy direction: Sonnet is honest
+  about the hard calls instead of uniformly sure. So `needsReview` is a
+  meaningful lever on Sonnet (its low-confidence calls really are the borderline
+  ones); on Haiku it was near-useless (everything ≥ 0.85).
+- **But it is still confidently wrong on the boundary miss.** Like Haiku,
+  `meanConfidenceIncorrect` is **0.95** — good general calibration did not save it
+  on the one case it was fooled by, and `needsReview` (< 0.5) would not flag it.
+
+**This corrects the previous run's hypothesis.** Calibration is *not* a
+frontier-only property — Sonnet 4.6 calibrates as well as Opus. What is
+frontier-tier is the specific semantic catch: the exclusive→inclusive boundary
+shift in `over $100 → $100 or more` is missed, confidently, by **both** Sonnet
+and Haiku, and caught only by Opus (at 0.92). That one case is now a clean
+model-floor sentinel.
+
+**Read for the default-model choice.** Opus 4.8 stays the default where missed
+substance is the expensive error — it is the only model that catches the boundary
+case. The economics narrow the middle: Sonnet 4.6 saves only ~40% on output ($15
+vs $25 per 1M) and shares the blind spot, so it is hard to justify over Opus when
+correctness matters — its real edge is over Haiku, on calibration, not cost.
+Haiku 4.5 is the deep cost cut (~1/5 of Opus output, $5 per 1M) but pairs the
+same blind spot with flat confidence that hides it. Net: pay for Opus where a
+missed boundary is costly; drop to Haiku where cost dominates and that miss is
+acceptable; Sonnet's niche is narrow.
+
+```
+model: claude-sonnet-4-6
+corpus: 32 cases
+
+ok   threshold raised: substantive (1)
+ok   deadline shortened: substantive (1)
+ok   negation added: substantive (1)
+ok   scope narrowed: substantive (0.99)
+ok   casing only: cosmetic (0.99)
+ok   punctuation only: cosmetic (0.95)
+ok   reworded, same meaning: cosmetic (0.95)
+ok   renumbered clause: cosmetic (0.75)
+ok   insert: new obligation: substantive (0.99)
+ok   insert: added exception: substantive (0.97)
+ok   insert: boilerplate closing: cosmetic (0.7)
+ok   delete: removed condition: substantive (0.97)
+ok   delete: removed exemption: substantive (0.99)
+ok   delete: boilerplate greeting: cosmetic (0.6)
+ok   number formatting only: cosmetic (0.99)
+ok   equivalent duration: cosmetic (0.97)
+ok   spelled-out count: cosmetic (0.97)
+ok   equivalent currency notation: cosmetic (0.95)
+ok   double negative simplified: cosmetic (0.95)
+ok   active to passive voice: cosmetic (0.95)
+ok   synonym, same threshold: cosmetic (0.95)
+ok   permission to requirement: substantive (0.95)
+ok   recommendation to requirement: substantive (0.95)
+ok   timing inverted: substantive (0.99)
+MISS boundary now inclusive: cosmetic (0.95)
+ok   small number change: substantive (1)
+ok   quantifier widened: substantive (0.99)
+ok   and to or: substantive (0.99)
+ok   include to exclude: substantive (1)
+ok   vague to specific deadline: substantive (0.99)
+ok   insert: convenience disclaimer: cosmetic (0.6)
+ok   delete: removed benefit: substantive (0.99)
+
+{
+  "total": 32,
+  "accuracy": 0.96875,
+  "precision": 1,
+  "recall": 0.9444444444444444,
+  "f1": 0.9714285714285714,
+  "missedSubstantive": 1,
+  "falseFlags": 0,
+  "meanConfidenceCorrect": 0.9364516129032256,
   "meanConfidenceIncorrect": 0.95
 }
 ```
