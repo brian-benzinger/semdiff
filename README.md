@@ -92,8 +92,9 @@ npx semdiff before.txt after.txt --granularity clause
 From a checkout of this repo you can run the source directly without building —
 `node src/cli.ts before.txt after.txt` — on a Node that strips TypeScript types.
 
-Only genuinely-changed pairs reach the model; identical, cosmetic, inserted, or
-deleted content is classified locally and needs no API key.
+Changed content — insertions, deletions, and modifications — is classified by
+the model; identical, cosmetic, and relocated (moved) content is classified
+locally and needs no API key.
 
 ## Design at a glance
 

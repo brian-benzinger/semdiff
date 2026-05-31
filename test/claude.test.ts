@@ -8,7 +8,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createDefaultClassifier } from "../src/classifiers/claude.ts";
 import { DEFAULT_MODEL_ID, type CandidatePair } from "../src/classifier.ts";
 
-const PAIR: CandidatePair = { a: "30%", b: "40%", spanA: { start: 0, end: 3 }, spanB: { start: 0, end: 3 } };
+const PAIR: CandidatePair = { type: "modification", a: "30%", b: "40%", spanA: { start: 0, end: 3 }, spanB: { start: 0, end: 3 } };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });

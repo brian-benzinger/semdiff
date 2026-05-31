@@ -47,11 +47,11 @@ describe("semdiff CLI (ADR-0002)", () => {
     expect(typeof result.schemaVersion).toBe("string");
   });
 
-  it("diffs an insertion without needing the model", async () => {
-    const [a, b] = twoFiles("First one. Third one.", "First one. Second one. Third one.");
+  it("diffs a relocation as a move without needing the model", async () => {
+    const [a, b] = twoFiles("Alpha one. Beta two.", "Beta two. Alpha one.");
     const out = capture("stdout");
     expect(await main([a, b])).toBe(0);
-    expect(JSON.parse(out()).summary.byType.insertion).toBe(1);
+    expect(JSON.parse(out()).summary.byType.move).toBe(1);
   });
 
   it("accepts --granularity clause", async () => {

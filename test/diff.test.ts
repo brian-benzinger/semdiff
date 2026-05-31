@@ -39,8 +39,8 @@ describe("diff (ADR-0003, ADR-0006)", () => {
     expect(result.summary.cosmetic).toBe(1);
   });
 
-  it("records an insertion as substantive", async () => {
-    const result = await diff("First one. Third one.", "First one. Second one. Third one.");
+  it("classifies an insertion via the injected classifier", async () => {
+    const result = await diff("First one. Third one.", "First one. Second one. Third one.", { classifier: substantive });
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.type).toBe("insertion");
     expect(result.changes[0]?.classification).toBe("substantive");
@@ -48,8 +48,8 @@ describe("diff (ADR-0003, ADR-0006)", () => {
     expect(result.summary.byType.insertion).toBe(1);
   });
 
-  it("records a deletion as substantive", async () => {
-    const result = await diff("First one. Second one. Third one.", "First one. Third one.");
+  it("classifies a deletion via the injected classifier", async () => {
+    const result = await diff("First one. Second one. Third one.", "First one. Third one.", { classifier: substantive });
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.type).toBe("deletion");
     expect(result.changes[0]?.spanB).toBeNull();

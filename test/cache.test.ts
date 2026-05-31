@@ -9,7 +9,7 @@ import type { CandidatePair, Classifier, ClassifierVerdict } from "../src/classi
 const VERDICT: ClassifierVerdict = { classification: "substantive", description: "changed", confidence: 0.9 };
 
 function pair(a: string, b: string): CandidatePair {
-  return { a, b, spanA: { start: 0, end: a.length }, spanB: { start: 0, end: b.length } };
+  return { type: "modification", a, b, spanA: { start: 0, end: a.length }, spanB: { start: 0, end: b.length } };
 }
 
 function counting(): { classifier: Classifier; calls: () => number } {

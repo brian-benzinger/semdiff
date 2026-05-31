@@ -32,6 +32,11 @@ const SYSTEM_PROMPT = [
   '- "cosmetic": it preserves the meaning — formatting, punctuation, casing,',
   "  whitespace, renumbering, or a meaning-preserving rewording.",
   "",
+  "One side may be empty: an empty A means the B text was newly inserted, and an",
+  "empty B means the A text was removed. Judge whether that insertion or removal",
+  "is substantive (it adds or removes meaning, an obligation, or a condition) or",
+  "cosmetic (boilerplate, formatting, or duplicate content).",
+  "",
   "Rules:",
   "- Judge only these two snippets; do not assume external context.",
   '- When genuinely uncertain whether the meaning changed, choose "substantive":',
@@ -102,7 +107,7 @@ function buildRequest(modelId: string, pair: CandidatePair): unknown {
       format: { type: "json_schema", schema: VERDICT_SCHEMA },
     },
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: `A:\n${pair.a}\n\nB:\n${pair.b}` }],
+    messages: [{ role: "user", content: `Change type: ${pair.type}.\nA:\n${pair.a}\n\nB:\n${pair.b}` }],
   };
 }
 
