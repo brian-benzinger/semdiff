@@ -61,18 +61,18 @@ export async function diff(a: string, b: string, options?: DiffOptions): Promise
       : await classify(candidates, options?.classifier ?? createDefaultClassifier({ modelId }));
 
   const changes: Change[] = [];
-  let next = 0;
+  let classifiedIndex = 0;
   for (const pair of pairs) {
     if (pair.tag === "unchanged") continue;
     if (pair.tag === "trivial-change") {
       changes.push(cosmeticModification(pair.a!, pair.b!));
     } else if (pair.a !== null && pair.b !== null) {
-      changes.push(classified[next]!);
-      next += 1;
+      changes.push(classified[classifiedIndex]!);
+      classifiedIndex += 1;
     } else if (pair.b !== null) {
-      changes.push(structural("insertion", null, pair.b));
+      changes.push(insertion(pair.b));
     } else {
-      changes.push(structural("deletion", pair.a!, null));
+      changes.push(deletion(pair.a!));
     }
   }
 
@@ -94,15 +94,12 @@ function cosmeticModification(a: Unit, b: Unit): Change {
  * treated as substantive by default — surfacing it, never hiding it (ADR-0005);
  * semantic judgment of one-sided changes is a future refinement.
  */
-function structural(type: "insertion" | "deletion", a: Unit | null, b: Unit | null): Change {
-  return {
-    type,
-    classification: "substantive",
-    spanA: a === null ? null : a.span,
-    spanB: b === null ? null : b.span,
-    confidence: 1,
-    needsReview: false,
-  };
+function insertion(unit: Unit): Change {
+  return { type: "insertion", classification: "substantive", spanA: null, spanB: unit.span, confidence: 1, needsReview: false };
+}
+
+function deletion(unit: Unit): Change {
+  return { type: "deletion", classification: "substantive", spanA: unit.span, spanB: null, confidence: 1, needsReview: false };
 }
 
 function summarize(changes: readonly Change[]): DiffSummary {
