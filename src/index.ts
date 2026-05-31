@@ -66,6 +66,8 @@ export async function diff(a: string, b: string, options?: DiffOptions): Promise
     if (pair.tag === "unchanged") continue;
     if (pair.tag === "trivial-change") {
       changes.push(cosmeticModification(pair.a!, pair.b!));
+    } else if (pair.tag === "move") {
+      changes.push(moveChange(pair.a!, pair.b!));
     } else if (pair.a !== null && pair.b !== null) {
       changes.push(classified[classifiedIndex]!);
       classifiedIndex += 1;
@@ -87,6 +89,15 @@ export async function diff(a: string, b: string, options?: DiffOptions): Promise
 /** A cosmetic edit to a matched unit — determined deterministically, no model. */
 function cosmeticModification(a: Unit, b: Unit): Change {
   return { type: "modification", classification: "cosmetic", spanA: a.span, spanB: b.span, confidence: 1, needsReview: false };
+}
+
+/**
+ * A relocation of identical content (ADR-0010) — deterministic and cosmetic: the
+ * text did not change, only its position, so it is surfaced as a `move` rather
+ * than a delete + insert. `a` is the old span, `b` the new one.
+ */
+function moveChange(a: Unit, b: Unit): Change {
+  return { type: "move", classification: "cosmetic", spanA: a.span, spanB: b.span, confidence: 1, needsReview: false };
 }
 
 /**

@@ -106,4 +106,12 @@ describe("diff (ADR-0003, ADR-0006)", () => {
       if (change.spanB !== null) expect(b.slice(change.spanB.start, change.spanB.end)).toBe("The cap is 40%.");
     }
   });
+
+  it("detects a relocation as a cosmetic move, needing no classifier", async () => {
+    const result = await diff("Alpha one. Beta two.", "Beta two. Alpha one.");
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0]?.type).toBe("move");
+    expect(result.changes[0]?.classification).toBe("cosmetic");
+    expect(result.summary.byType.move).toBe(1);
+  });
 });

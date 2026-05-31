@@ -145,4 +145,13 @@ describe("align (ADR-0003)", () => {
       if (pair.b !== null) expect(inputB.slice(pair.b.span.start, pair.b.span.end)).toBe(pair.b.text);
     }
   });
+
+  it("detects a relocation of identical content as a move with old/new spans", () => {
+    const a = [u("Alpha.", 0), u("Beta.", 7)];
+    const b = [u("Beta.", 0), u("Alpha.", 6)];
+    const pairs = align(a, b);
+    expect(pairs.map((p) => p.tag)).toEqual(["move", "unchanged"]);
+    expect(pairs[0]?.a?.span).toEqual({ start: 0, end: 6 });
+    expect(pairs[0]?.b?.span).toEqual({ start: 6, end: 12 });
+  });
 });
