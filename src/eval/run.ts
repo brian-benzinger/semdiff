@@ -11,21 +11,26 @@
  */
 import { createDefaultClassifier } from "../classifiers/claude.ts";
 import type { CandidatePair } from "../classifier.ts";
-import { CORPUS } from "./corpus.ts";
+import { CORPUS, type EvalCase } from "./corpus.ts";
 import { scoreEval, type ScoredCase } from "./score.ts";
+
+/**
+ * Build the `CandidatePair` for a case, mirroring how `diff` shapes one (ADR-0011):
+ * an insertion has an empty `a` and null `spanA`, a deletion an empty `b` and null
+ * `spanB`, a modification both sides present.
+ */
+function toCandidatePair(testCase: EvalCase): CandidatePair {
+  const type = testCase.type ?? "modification";
+  const spanA = type === "insertion" ? null : { start: 0, end: testCase.a.length };
+  const spanB = type === "deletion" ? null : { start: 0, end: testCase.b.length };
+  return { type, a: testCase.a, b: testCase.b, spanA, spanB };
+}
 
 async function runEval(): Promise<void> {
   const classifier = createDefaultClassifier({});
   const scored: ScoredCase[] = [];
   for (const testCase of CORPUS) {
-    const pair: CandidatePair = {
-      type: "modification",
-      a: testCase.a,
-      b: testCase.b,
-      spanA: { start: 0, end: testCase.a.length },
-      spanB: { start: 0, end: testCase.b.length },
-    };
-    const verdict = await classifier.classify(pair);
+    const verdict = await classifier.classify(toCandidatePair(testCase));
     scored.push({ expected: testCase.expected, predicted: verdict.classification, confidence: verdict.confidence });
     const mark = verdict.classification === testCase.expected ? "ok  " : "MISS";
     process.stdout.write(`${mark} ${testCase.name}: ${verdict.classification} (${verdict.confidence})\n`);

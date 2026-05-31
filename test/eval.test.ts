@@ -16,6 +16,24 @@ describe("eval corpus (ADR-0005)", () => {
       expect(["substantive", "cosmetic"]).toContain(testCase.expected);
     }
   });
+
+  it("shapes one-sided cases per ADR-0011 (empty side matches the type)", () => {
+    for (const testCase of CORPUS) {
+      if (testCase.type === "insertion") expect(testCase.a).toBe("");
+      if (testCase.type === "deletion") expect(testCase.b).toBe("");
+      // A modification (or untyped default) is two-sided: both sides have text.
+      if (testCase.type === undefined || testCase.type === "modification") {
+        expect(testCase.a.length).toBeGreaterThan(0);
+        expect(testCase.b.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("exercises both one-sided directions (ADR-0011 coverage)", () => {
+    const types = new Set(CORPUS.map((c) => c.type ?? "modification"));
+    expect(types).toContain("insertion");
+    expect(types).toContain("deletion");
+  });
 });
 
 describe("eval scoring (ADR-0005)", () => {
