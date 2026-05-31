@@ -92,6 +92,12 @@ ADR** — do not silently edit an accepted one. Follow the conventions in
 
 ## Status
 
-Pre-implementation. This is the design-capture commit: README, this file, and the
-ADRs. Code should follow the decisions recorded above; when reality diverges from
-an ADR, write the next ADR rather than letting docs and code disagree.
+Implemented (v0, pre-1.0) and packaged for distribution. The full pipeline —
+segment → align → classify → structured diff — works end to end behind the
+per-file coverage gate, with the default Anthropic classifier, content-addressed
+cache, CLI, and eval harness in place. The package builds to `dist/` (ESM +
+bundled `.d.ts`, zero runtime dependencies) via `npm run build` and is shaped for
+publishing to npm as a library + CLI (ADR-0002).
+
+Code follows the decisions recorded above; when reality diverges from an ADR,
+write the next ADR rather than letting docs and code disagree.

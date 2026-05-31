@@ -1,28 +1,62 @@
 {
   "name": "semdiff",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Meaning-aware diff engine: surfaces substantive prose changes and suppresses cosmetic ones. Library + CLI.",
   "license": "MIT",
+  "author": "Brian Benzinger",
   "type": "module",
+  "keywords": [
+    "diff",
+    "semantic-diff",
+    "meaning-aware",
+    "prose",
+    "text-diff",
+    "structured-diff",
+    "llm",
+    "classifier",
+    "anthropic",
+    "claude"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brian-benzinger/semdiff.git"
+  },
+  "homepage": "https://github.com/brian-benzinger/semdiff#readme",
+  "bugs": {
+    "url": "https://github.com/brian-benzinger/semdiff/issues"
+  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
+  "types": "./dist/index.d.ts",
   "bin": {
-    "semdiff": "./src/cli.ts"
+    "semdiff": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
   "engines": {
-    "node": ">=22.18"
+    "node": ">=20.0.0"
   },
   "scripts": {
+    "build": "tsup",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "eval": "node src/eval/run.ts"
+    "eval": "node src/eval/run.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
     "@vitest/coverage-v8": "^4.1.7",
+    "tsup": "^8.5.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.7"
   }
