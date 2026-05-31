@@ -136,12 +136,19 @@ import { diff, createDefaultClassifier } from "semdiff";
 const classifier = createDefaultClassifier({
   apiKey: mySecret,                       // default: process.env.ANTHROPIC_API_KEY
   modelId: "claude-opus-4-8",             // optional
+  timeoutMs: 60000,                       // optional; per-call timeout (ADR-0012)
+  maxRetries: 2,                          // optional; retries on 429/5xx/network/timeout (ADR-0012)
 });
 const result = await diff(before, after, { classifier });
 ```
 
 > The `modelId` you pass is also stamped into the result's `provenance`, so a
 > diff always records which model produced it (ADR-0004).
+
+> Each model call has a timeout and retries transient failures (429, 5xx, network
+> errors, timeouts) with exponential backoff, honouring `Retry-After`;
+> non-transient errors (400, auth) fail fast. Tune with `timeoutMs` / `maxRetries`,
+> or set `maxRetries: 0` for a single attempt (ADR-0012).
 
 ### 3. Use a different provider entirely
 
@@ -208,6 +215,7 @@ The full reasoning is in the ADRs:
 | [0009](adr/0009-default-classifier-over-fetch.md) | The default classifier calls the Anthropic API over fetch |
 | [0010](adr/0010-move-detection-by-content-match.md) | Move detection by content match (deterministic, cosmetic) |
 | [0011](adr/0011-classify-one-sided-changes.md) | Classify one-sided changes (insertions/deletions) through the model |
+| [0012](adr/0012-classifier-resilience-timeout-and-retry.md) | Default classifier resilience: per-call timeout and bounded retry with backoff |
 
 ## License
 

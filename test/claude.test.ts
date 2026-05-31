@@ -36,6 +36,7 @@ function requestBody(mock: ReturnType<typeof stubFetch>): Record<string, any> {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   delete process.env.ANTHROPIC_API_KEY;
 });
 
@@ -92,9 +93,9 @@ describe("createDefaultClassifier (ADR-0009)", () => {
     expect(body.output_config.format.type).toBe("json_schema");
   });
 
-  it("throws on a non-ok HTTP status", async () => {
+  it("throws on a non-ok HTTP status (retries disabled)", async () => {
     stubFetch(new Response("", { status: 500 }));
-    await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow(/Anthropic API error 500/);
+    await expect(createDefaultClassifier({ apiKey: "k", maxRetries: 0 }).classify(PAIR)).rejects.toThrow(/Anthropic API error 500/);
   });
 
   it("surfaces the response body in a non-ok error (diagnosable 400s)", async () => {
@@ -115,5 +116,86 @@ describe("createDefaultClassifier (ADR-0009)", () => {
   it("throws when the verdict text is not valid JSON", async () => {
     stubFetch(jsonResponse({ content: [{ type: "text", text: "not json" }] }));
     await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow();
+  });
+});
+
+describe("resilience: timeout and bounded retry (ADR-0012)", () => {
+  it("retries a 429 with backoff, then succeeds", async () => {
+    vi.useFakeTimers();
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("rate limited", { status: 429 }))
+      .mockResolvedValueOnce(verdictResponse({ classification: "substantive", confidence: 0.9 }));
+    vi.stubGlobal("fetch", mock);
+    const promise = createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    await vi.advanceTimersByTimeAsync(2000);
+    await expect(promise).resolves.toMatchObject({ classification: "substantive" });
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a network error, then succeeds", async () => {
+    vi.useFakeTimers();
+    const mock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    vi.stubGlobal("fetch", mock);
+    const promise = createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    await vi.advanceTimersByTimeAsync(2000);
+    await expect(promise).resolves.toMatchObject({ classification: "cosmetic" });
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits out the Retry-After header instead of the default backoff", async () => {
+    vi.useFakeTimers();
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("slow down", { status: 429, headers: { "retry-after": "2" } }))
+      .mockResolvedValueOnce(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    vi.stubGlobal("fetch", mock);
+    const promise = createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(mock).toHaveBeenCalledTimes(1); // still holding for the 2s server hint
+    await vi.advanceTimersByTimeAsync(600);
+    await expect(promise).resolves.toMatchObject({ classification: "cosmetic" });
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts a hung request after the timeout and retries", async () => {
+    vi.useFakeTimers();
+    const mock = vi
+      .fn()
+      .mockImplementationOnce(
+        (_url: string | URL | Request, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+          }),
+      )
+      .mockResolvedValueOnce(verdictResponse({ classification: "substantive", confidence: 0.8 }));
+    vi.stubGlobal("fetch", mock);
+    const promise = createDefaultClassifier({ apiKey: "k", timeoutMs: 1000 }).classify(PAIR);
+    await vi.advanceTimersByTimeAsync(1000); // fire the timeout → abort the first attempt
+    await vi.advanceTimersByTimeAsync(2000); // wait out the backoff → retry
+    await expect(promise).resolves.toMatchObject({ classification: "substantive" });
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after maxRetries and throws the last transient error", async () => {
+    vi.useFakeTimers();
+    const mock = vi.fn(() => Promise.resolve(new Response("overloaded", { status: 529 })));
+    vi.stubGlobal("fetch", mock);
+    const result = createDefaultClassifier({ apiKey: "k", maxRetries: 2 })
+      .classify(PAIR)
+      .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(10_000);
+    const error = await result;
+    expect((error as Error).message).toMatch(/Anthropic API error 529/);
+    expect(mock).toHaveBeenCalledTimes(3); // initial attempt + 2 retries
+  });
+
+  it("does not retry a client error (400)", async () => {
+    const mock = stubFetch(new Response("bad request", { status: 400 }));
+    await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow(/Anthropic API error 400/);
+    expect(mock).toHaveBeenCalledTimes(1);
   });
 });
