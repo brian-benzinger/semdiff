@@ -25,6 +25,7 @@
   "bugs": {
     "url": "https://github.com/brian-benzinger/semdiff/issues"
   },
+  "main": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -33,7 +34,7 @@
   },
   "types": "./dist/index.d.ts",
   "bin": {
-    "semdiff": "./dist/cli.js"
+    "semdiff": "dist/cli.js"
   },
   "files": [
     "dist",
