@@ -8,19 +8,62 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The supported floor (engines.node >= 20) through current. Running the
+        # test suite on each catches engine code that depends on a newer runtime.
+        node-version: ["20", "22", "24"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      # Exercise the zero-build path (ADR-0002): raw `node` type-stripping must be
-      # able to load the source. Catches strip-incompatible syntax (e.g. parameter
-      # properties) that esbuild-based test/build tolerate but `node src/...` and
-      # `npm run eval` do not. The cosmetic sample resolves locally, so no API key.
+      # The zero-build path (ADR-0002) relies on Node's TypeScript stripping,
+      # which only exists on 22.18+/24 — skip it on the Node 20 floor. The
+      # published dist (exercised by the `package` job) is what must run on 20.
+      # Catches strip-incompatible syntax (e.g. parameter properties) that the
+      # esbuild-based test/build tolerate but `node src/...` and `npm run eval` do not.
       - name: Smoke-test the raw-node CLI path
+        if: matrix.node-version != '20'
         run: node src/cli.ts examples/samples/cosmetic.before.txt examples/samples/cosmetic.after.txt
+
+  package:
+    # Validate the artifact a consumer actually installs — not the working tree.
+    # Guards the publish surface (bin, exports, files) that only `npm publish`
+    # normalizes, across every supported Node so `engines.node >= 20` is real.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      # `npm pack` runs prepack (build) and emits exactly what `npm publish` ships.
+      - name: Pack the publishable tarball
+        run: npm pack
+      # Install that tarball into a throwaway project and exercise the real
+      # artifact: the ESM entry must import and expose the public API, and the
+      # installed `semdiff` bin must run offline (the cosmetic case needs no key).
+      - name: Smoke-test the packed artifact
+        run: |
+          set -euo pipefail
+          tarball="$(pwd)/$(ls semdiff-*.tgz)"
+          work="$(mktemp -d)"
+          cd "$work"
+          npm init -y >/dev/null 2>&1
+          npm install "$tarball"
+          node -e "import('semdiff').then(m => { if (typeof m.diff !== 'function') throw new Error('diff export missing from published package'); }).catch(e => { console.error(e); process.exit(1); })"
+          printf 'The cap is fixed.\n' > a.txt
+          printf 'the cap is fixed.\n' > b.txt
+          node_modules/.bin/semdiff a.txt b.txt
