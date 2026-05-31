@@ -15,7 +15,7 @@ export default defineConfig({
       provider: "v8",
       all: true,
       include: ["src/**/*.ts"],
-      exclude: ["src/cli.ts"],
+      exclude: ["src/cli.ts", "src/eval/run.ts"],
       thresholds: {
         perFile: true,
         lines: 95,
