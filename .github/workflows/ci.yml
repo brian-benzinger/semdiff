@@ -18,3 +18,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Exercise the zero-build path (ADR-0002): raw `node` type-stripping must be
+      # able to load the source. Catches strip-incompatible syntax (e.g. parameter
+      # properties) that esbuild-based test/build tolerate but `node src/...` and
+      # `npm run eval` do not. The cosmetic sample resolves locally, so no API key.
+      - name: Smoke-test the raw-node CLI path
+        run: node src/cli.ts examples/samples/cosmetic.before.txt examples/samples/cosmetic.after.txt
