@@ -49,6 +49,13 @@ components**, not as a later hardening pass.
   `needs-review` fallback rather than silent failure.
 - Pinned model, prompt version, and sampling parameters, stamped into every
   result for reproducibility and audit.
+  - **Release checklist:** the prompt version is the cache/reproducibility
+    contract. While pre-release (no consumers, in-memory cache only) the prompt
+    may change freely under `promptVersion: "0"`. Before the first published
+    release, freeze or bump `DEFAULT_PROMPT_VERSION` to match the shipped prompt,
+    and bump it on any prompt change thereafter — once a consumer can persist a
+    verdict cache, a changed prompt under an unchanged version serves stale
+    verdicts.
 - Idempotent runs: re-diffing the same inputs produces the same structured
   output, byte-for-byte, when served from cache.
 
