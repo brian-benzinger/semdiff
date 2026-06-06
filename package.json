@@ -1,6 +1,6 @@
 {
   "name": "semdiff",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Meaning-aware diff engine: surfaces substantive prose changes and suppresses cosmetic ones. Library + CLI.",
   "license": "MIT",
   "author": "Brian Benzinger",
