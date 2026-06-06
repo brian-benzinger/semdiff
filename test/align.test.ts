@@ -146,6 +146,20 @@ describe("align (ADR-0003)", () => {
     }
   });
 
+  it("aligns thousands of units without an n*m length matrix (linear space)", () => {
+    // Under the old O(n*m)-space LCS this allocated a ~16M-cell matrix; the
+    // divide-and-conquer alignment keeps only rolling rows, so a large diff
+    // with a small change stays cheap. Guards against reintroducing the matrix.
+    const size = 4000;
+    const a = Array.from({ length: size }, (_, i) => u(`Clause number ${i}.`));
+    const b = a.map((unit, i) =>
+      i === size / 2 ? u("An entirely different clause.") : unit,
+    );
+    const pairs = align(a, b);
+    expect(pairs.filter((p) => p.tag === "unchanged")).toHaveLength(size - 1);
+    expect(pairs.some((p) => p.tag === "candidate")).toBe(true);
+  });
+
   it("detects a relocation of identical content as a move with old/new spans", () => {
     const a = [u("Alpha.", 0), u("Beta.", 7)];
     const b = [u("Beta.", 0), u("Alpha.", 6)];
