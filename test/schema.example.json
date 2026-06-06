@@ -3,7 +3,7 @@
   "provenance": {
     "modelId": "claude-opus-4-8",
     "promptVersion": "0",
-    "engineVersion": "0.1.0"
+    "engineVersion": "0.1.1"
   },
   "changes": [
     {
