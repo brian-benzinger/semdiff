@@ -161,30 +161,105 @@ function tokenize(unit: Unit): string[] {
 /**
  * Longest-common-subsequence match over two key sequences, returned as ordered
  * `[indexInA, indexInB]` pairs of equal keys.
+ *
+ * Implemented with Hirschberg's divide-and-conquer LCS: O(n*m) time but only
+ * O(min-of-the-two-lengths) space. The earlier version materialized the full
+ * `(n+1) x (m+1)` length matrix, which is O(n*m) space and exhausts memory on
+ * large inputs — two ~800 KB documents segment into tens of thousands of units,
+ * so the matrix reaches hundreds of millions of cells (multiple GB) regardless
+ * of how small the actual change is. This keeps two rolling rows instead, so a
+ * large diff stays in tens of MB. The LCS it returns is identical for the
+ * common unambiguous case (the golden align fixtures are unchanged).
  */
 function lcsMatches(a: readonly string[], b: readonly string[]): Array<readonly [number, number]> {
-  const n = a.length;
-  const m = b.length;
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      dp[i]![j] = a[i] === b[j] ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+  const matches: Array<readonly [number, number]> = [];
+  hirschberg(a, 0, a.length, b, 0, b.length, matches);
+  return matches;
+}
+
+/** Append, in order, the matched absolute-index pairs for `a[a0:a1]`/`b[b0:b1]`. */
+function hirschberg(
+  a: readonly string[],
+  a0: number,
+  a1: number,
+  b: readonly string[],
+  b0: number,
+  b1: number,
+  out: Array<readonly [number, number]>,
+): void {
+  const n = a1 - a0;
+  const m = b1 - b0;
+  if (n === 0 || m === 0) return;
+  if (n === 1) {
+    const key = a[a0]!;
+    for (let j = b0; j < b1; j++) {
+      if (b[j] === key) {
+        out.push([a0, j]);
+        return;
+      }
+    }
+    return;
+  }
+
+  const aMid = a0 + (n >> 1);
+  // scoreL[k] = LCS(a[a0:aMid], b[b0:b0+k]); scoreR[k] = LCS(a[aMid:a1], b[b0+k:b1]).
+  const scoreL = lcsRowForward(a, a0, aMid, b, b0, b1);
+  const scoreR = lcsRowBackward(a, aMid, a1, b, b0, b1);
+  // Split B where the two halves' LCS lengths sum highest (first max keeps the
+  // result deterministic and left-biased, matching the prior forward walk).
+  let best = -1;
+  let split = 0;
+  for (let k = 0; k <= m; k++) {
+    const total = scoreL[k]! + scoreR[k]!;
+    if (total > best) {
+      best = total;
+      split = k;
     }
   }
 
-  const matches: Array<readonly [number, number]> = [];
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      matches.push([i, j]);
-      i++;
-      j++;
-    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
-      i++;
-    } else {
-      j++;
+  hirschberg(a, a0, aMid, b, b0, b0 + split, out);
+  hirschberg(a, aMid, a1, b, b0 + split, b1, out);
+}
+
+/** Forward LCS lengths: returns row where row[k] = LCS(a[a0:a1], b[b0:b0+k]). */
+function lcsRowForward(
+  a: readonly string[],
+  a0: number,
+  a1: number,
+  b: readonly string[],
+  b0: number,
+  b1: number,
+): number[] {
+  const width = b1 - b0;
+  let prev = new Array<number>(width + 1).fill(0);
+  let curr = new Array<number>(width + 1).fill(0);
+  for (let i = a0; i < a1; i++) {
+    for (let k = 1; k <= width; k++) {
+      curr[k] =
+        a[i] === b[b0 + k - 1] ? prev[k - 1]! + 1 : Math.max(prev[k]!, curr[k - 1]!);
     }
+    [prev, curr] = [curr, prev];
   }
-  return matches;
+  return prev;
+}
+
+/** Backward LCS lengths: returns row where row[k] = LCS(a[a0:a1], b[b0+k:b1]). */
+function lcsRowBackward(
+  a: readonly string[],
+  a0: number,
+  a1: number,
+  b: readonly string[],
+  b0: number,
+  b1: number,
+): number[] {
+  const width = b1 - b0;
+  let prev = new Array<number>(width + 1).fill(0);
+  let curr = new Array<number>(width + 1).fill(0);
+  for (let i = a1 - 1; i >= a0; i--) {
+    for (let k = width - 1; k >= 0; k--) {
+      curr[k] = a[i] === b[b0 + k] ? prev[k + 1]! + 1 : Math.max(prev[k]!, curr[k + 1]!);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev;
 }
