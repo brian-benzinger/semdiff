@@ -24,17 +24,42 @@ const MAX_ATTEMPTS = 2;
 const MIN_TRUSTED_CONFIDENCE = 0.5;
 
 /**
- * Classify changed candidate pairs into `Change`s using the injected classifier.
- * Order is preserved; each change carries the candidate's type and spans untouched.
+ * How many pairs are classified at once by default (ADR-0013). semdiff makes one
+ * provider call per changed pair (ADR-0004, ADR-0011); classifying them one after
+ * another makes wall time (#changes × per-call latency) — minutes on a real
+ * document. A bounded worker pool keeps several calls in flight, cutting wall time
+ * by ~the pool size, while staying small enough that the default classifier's
+ * 429/5xx backoff (ADR-0012) absorbs provider rate limits instead of amplifying
+ * them. The pool size is bounded, never per-pair-unbounded, so a huge change set
+ * cannot fan out into thousands of simultaneous requests.
+ */
+export const DEFAULT_CONCURRENCY = 8;
+
+/**
+ * Classify changed candidate pairs into `Change`s using the injected classifier,
+ * running up to `concurrency` classifications concurrently (ADR-0013). Output
+ * ORDER is preserved — each result is placed at its input index, so a pair that
+ * finishes first never reorders the diff — and every change carries the
+ * candidate's type and spans untouched. Per-pair validation, retry, and the
+ * needs-review fallback are unchanged: concurrency only overlaps independent calls.
  */
 export async function classify(
   candidates: readonly CandidatePair[],
   classifier: Classifier,
+  concurrency: number = DEFAULT_CONCURRENCY,
 ): Promise<readonly Change[]> {
-  const changes: Change[] = [];
-  for (const pair of candidates) {
-    changes.push(await classifyPair(pair, classifier));
-  }
+  const changes = new Array<Change>(candidates.length);
+  const poolSize = Math.min(
+    Math.max(1, Math.floor(concurrency)),
+    Math.max(1, candidates.length),
+  );
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    for (let i = next++; i < candidates.length; i = next++) {
+      changes[i] = await classifyPair(candidates[i]!, classifier);
+    }
+  };
+  await Promise.all(Array.from({ length: poolSize }, worker));
   return changes;
 }
 

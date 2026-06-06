@@ -52,6 +52,7 @@ architecture, read the relevant record. The current decisions:
 | [0010](adr/0010-move-detection-by-content-match.md) | Move detection by content match (deterministic, cosmetic) |
 | [0011](adr/0011-classify-one-sided-changes.md) | Classify one-sided changes (insertions/deletions) through the model |
 | [0012](adr/0012-classifier-resilience-timeout-and-retry.md) | Default classifier resilience: per-call timeout and bounded retry with backoff |
+| [0013](adr/0013-concurrent-classification.md) | Concurrent classification with a bounded pool |
 
 If you make a decision that changes or supersedes one of these, **add a new
 ADR** — do not silently edit an accepted one. Follow the conventions in
