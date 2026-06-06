@@ -19,6 +19,7 @@ import { classify } from "./pipeline/classify.ts";
 export { ENGINE_VERSION, DEFAULT_PROMPT_VERSION };
 export { createDefaultClassifier, type DefaultClassifierConfig } from "./classifiers/claude.ts";
 export { withCache, createMemoryCache, cacheKey, type VerdictCache, type CacheOptions } from "./cache.ts";
+export { DEFAULT_CONCURRENCY } from "./pipeline/classify.ts";
 
 /** Options for a `diff` run. Omit a field to take its default. */
 export interface DiffOptions {
@@ -35,6 +36,12 @@ export interface DiffOptions {
   readonly promptVersion?: string;
   /** Granularity at which inputs are segmented (ADR-0003). */
   readonly segmentGranularity?: SegmentGranularity;
+  /**
+   * How many changed pairs to classify concurrently (ADR-0013). Defaults to
+   * `DEFAULT_CONCURRENCY`. Raise it to diff faster when the provider's rate limit
+   * allows; lower it (or set 1 for fully sequential) on a tight rate limit.
+   */
+  readonly classifyConcurrency?: number;
 }
 
 /**
@@ -64,7 +71,11 @@ export async function diff(a: string, b: string, options?: DiffOptions): Promise
   const classified =
     candidates.length === 0
       ? []
-      : await classify(candidates, options?.classifier ?? createDefaultClassifier({ modelId }));
+      : await classify(
+          candidates,
+          options?.classifier ?? createDefaultClassifier({ modelId }),
+          options?.classifyConcurrency,
+        );
 
   const changes: Change[] = [];
   let classifiedIndex = 0;

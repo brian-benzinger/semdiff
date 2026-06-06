@@ -129,4 +129,56 @@ describe("classify (ADR-0004)", () => {
     expect(deleted?.type).toBe("deletion");
     expect(deleted?.spanB).toBeNull();
   });
+
+  it("classifies concurrently, bounded by the pool size (ADR-0013)", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const classifier: Classifier = {
+      classify: async (): Promise<ClassifierVerdict> => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight -= 1;
+        return { classification: "cosmetic", confidence: 1 };
+      },
+    };
+    const candidates = Array.from({ length: 12 }, (_, n) => pair(`a${n}`, `b${n}`));
+    const changes = await classify(candidates, classifier, 4);
+    expect(changes).toHaveLength(12);
+    expect(peak).toBeGreaterThan(1); // genuinely overlapped, not sequential
+    expect(peak).toBeLessThanOrEqual(4); // never exceeds the pool size
+  });
+
+  it("preserves input order even when later pairs resolve first (ADR-0013)", async () => {
+    // The first pair resolves slowest; output order must still follow input order.
+    const classifier: Classifier = {
+      classify: async (p: CandidatePair): Promise<ClassifierVerdict> => {
+        await new Promise((resolve) => setTimeout(resolve, p.a === "first" ? 20 : 1));
+        return { classification: "substantive", description: p.a, confidence: 1 };
+      },
+    };
+    const changes = await classify(
+      [pair("first", "x"), pair("second", "y"), pair("third", "z")],
+      classifier,
+      8,
+    );
+    expect(changes.map((c) => c.description)).toEqual(["first", "second", "third"]);
+  });
+
+  it("treats a non-positive concurrency as sequential (pool of 1)", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const classifier: Classifier = {
+      classify: async (): Promise<ClassifierVerdict> => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        inFlight -= 1;
+        return { classification: "cosmetic", confidence: 1 };
+      },
+    };
+    const changes = await classify([pair("a", "A"), pair("b", "B")], classifier, 0);
+    expect(changes).toHaveLength(2);
+    expect(peak).toBe(1);
+  });
 });
