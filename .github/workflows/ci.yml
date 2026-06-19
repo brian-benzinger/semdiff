@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# Least-privilege default: jobs only need to read the repository contents.
+# Any job that writes (e.g. uploads an artifact, posts a comment) must
+# declare its own narrower `permissions:` block explicitly.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
