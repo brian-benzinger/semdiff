@@ -150,7 +150,21 @@ const result = await diff(before, after, { classifier });
 > non-transient errors (400, auth) fail fast. Tune with `timeoutMs` / `maxRetries`,
 > or set `maxRetries: 0` for a single attempt (ADR-0012).
 
-### 3. Use a different provider entirely
+### 3. Control classification concurrency
+
+Changed pairs are classified concurrently (default: 8 in-flight at once). Raise
+it to diff faster when your rate limit allows; lower it (or set `1` for fully
+sequential) on a tight limit (ADR-0013):
+
+```ts
+import { diff } from "semdiff";
+
+const result = await diff(before, after, {
+  classifyConcurrency: 4,   // default: 8
+});
+```
+
+### 4. Use a different provider entirely
 
 `semdiff` depends on a small `Classifier` interface, not on Anthropic. To use
 another provider (OpenAI, a local model, a mock for tests), implement
@@ -216,6 +230,7 @@ The full reasoning is in the ADRs:
 | [0010](adr/0010-move-detection-by-content-match.md) | Move detection by content match (deterministic, cosmetic) |
 | [0011](adr/0011-classify-one-sided-changes.md) | Classify one-sided changes (insertions/deletions) through the model |
 | [0012](adr/0012-classifier-resilience-timeout-and-retry.md) | Default classifier resilience: per-call timeout and bounded retry with backoff |
+| [0013](adr/0013-concurrent-classification.md) | Concurrent classification with a bounded pool |
 
 ## License
 
