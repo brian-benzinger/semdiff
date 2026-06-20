@@ -34,6 +34,25 @@ describe("withCache (ADR-0004)", () => {
     expect(calls()).toBe(1);
   });
 
+  it("does not cache thrown errors — subsequent calls retry the classifier", async () => {
+    let attempts = 0;
+    const classifier: Classifier = {
+      classify: async () => {
+        attempts++;
+        if (attempts === 1) throw new Error("transient failure");
+        return VERDICT;
+      },
+    };
+    const cached = withCache(classifier, { modelId: "m", promptVersion: "0" });
+    await expect(cached.classify(pair("A", "B"))).rejects.toThrow("transient failure");
+    // Second call must hit the classifier again, not return a cached error
+    expect(await cached.classify(pair("A", "B"))).toEqual(VERDICT);
+    expect(attempts).toBe(2);
+    // Third call should be served from cache (successful verdict was stored)
+    expect(await cached.classify(pair("A", "B"))).toEqual(VERDICT);
+    expect(attempts).toBe(2);
+  });
+
   it("treats whitespace-only differences as the same key", async () => {
     const { classifier, calls } = counting();
     const cached = withCache(classifier, { modelId: "m", promptVersion: "0" });
