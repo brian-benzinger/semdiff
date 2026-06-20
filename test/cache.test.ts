@@ -50,6 +50,14 @@ describe("withCache (ADR-0004)", () => {
     expect(calls()).toBe(2);
   });
 
+  it("keys on prompt version (no cross-version sharing)", async () => {
+    const { classifier, calls } = counting();
+    const cache = createMemoryCache();
+    await withCache(classifier, { modelId: "m", promptVersion: "v1", cache }).classify(pair("A", "B"));
+    await withCache(classifier, { modelId: "m", promptVersion: "v2", cache }).classify(pair("A", "B"));
+    expect(calls()).toBe(2);
+  });
+
   it("shares an injected cache across wrappers", async () => {
     const { classifier, calls } = counting();
     const cache = createMemoryCache();

@@ -168,4 +168,25 @@ describe("align (ADR-0003)", () => {
     expect(pairs[0]?.a?.span).toEqual({ start: 0, end: 6 });
     expect(pairs[0]?.b?.span).toEqual({ start: 6, end: 12 });
   });
+
+  it("pairs a deletion with the LAST insertion when multiple insertions share the same normalized key", () => {
+    // detectMoves builds its insertion map with Map.set(), so when two insertions
+    // share a normalized key the LAST one overwrites the first. A corresponding
+    // deletion is therefore matched to the last insertion, leaving the first as an
+    // orphan candidate. This documents the intentional last-wins semantics and
+    // would catch a regression to first-wins.
+    //
+    // Setup: a=[Alpha.,Beta.,Gamma.,Delta.], b=[Alpha.,Gamma.,Delta.,Beta.,Beta.]
+    // LCS matches Alpha/Gamma/Delta; Beta is a deletion in a and appears twice
+    // as insertions at positions 21 and 28 in b.
+    const a = [u("Alpha.", 0), u("Beta.", 7), u("Gamma.", 13), u("Delta.", 20)];
+    const b = [u("Alpha.", 0), u("Gamma.", 7), u("Delta.", 14), u("Beta.", 21), u("Beta.", 28)];
+    const pairs = align(a, b);
+    const move = pairs.find((p) => p.tag === "move");
+    expect(move).toBeDefined();
+    expect(move?.a?.span).toEqual({ start: 7, end: 12 });  // Beta. deletion from a
+    expect(move?.b?.span).toEqual({ start: 28, end: 33 }); // LAST insertion wins
+    const leftover = pairs.find((p) => p.tag === "candidate" && p.a === null);
+    expect(leftover?.b?.span).toEqual({ start: 21, end: 26 }); // first insertion is left over
+  });
 });
