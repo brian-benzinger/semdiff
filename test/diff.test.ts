@@ -91,9 +91,25 @@ describe("diff (ADR-0003, ADR-0006)", () => {
     expect(result.provenance).toEqual({ modelId: "m-1", promptVersion: "p-9", engineVersion: ENGINE_VERSION });
   });
 
-  it("respects clause granularity", async () => {
-    const result = await diff("Alpha; beta.", "Alpha; beta.", { segmentGranularity: "clause" });
-    expect(result.changes).toEqual([]);
+  it("respects clause granularity — change span covers only the modified clause, not the whole sentence", async () => {
+    // At sentence granularity the whole sentence is one unit; at clause
+    // granularity the two clauses segment independently, so a casing-only
+    // change to the second clause does not widen the span to cover the
+    // unchanged first clause. This verifies that segmentGranularity is
+    // actually passed through and affects the pipeline output.
+    const a = "First clause; SECOND CLAUSE.";
+    const b = "First clause; second clause.";
+
+    const clauseResult = await diff(a, b, { segmentGranularity: "clause" });
+    expect(clauseResult.changes).toHaveLength(1);
+    expect(clauseResult.changes[0]?.classification).toBe("cosmetic");
+    // "SECOND CLAUSE." begins at offset 14 — only the second clause is a change.
+    expect(clauseResult.changes[0]?.spanA).toEqual({ start: 14, end: 28 });
+
+    // At sentence granularity the entire sentence is one unit, so the span starts at 0.
+    const sentenceResult = await diff(a, b, { segmentGranularity: "sentence" });
+    expect(sentenceResult.changes).toHaveLength(1);
+    expect(sentenceResult.changes[0]?.spanA).toEqual({ start: 0, end: 28 });
   });
 
   it("keeps change spans indexing the literal inputs (ADR-0007)", async () => {
