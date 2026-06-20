@@ -74,6 +74,28 @@ describe("semdiff CLI (ADR-0002)", () => {
     expect(out()).toMatch(/Usage: semdiff/);
   });
 
+  it("prints usage for -h and exits 0", async () => {
+    const out = capture("stdout");
+    expect(await main(["-h"])).toBe(0);
+    expect(out()).toMatch(/Usage: semdiff/);
+  });
+
+  it("reports a diff error to stderr and exits 1 when diff() throws", async () => {
+    // Exercises the second try/catch in main() — file reads succeed but diff()
+    // throws because no API key is available for the model-needing change.
+    // The file-read error test does not reach this branch.
+    const [a, b] = twoFiles("The cap is 30%.", "The cap is 40%.");
+    const err = capture("stderr");
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      expect(await main([a, b])).toBe(1);
+      expect(err()).toMatch(/no API key/);
+    } finally {
+      if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved;
+    }
+  });
+
   it("rejects the wrong number of arguments with exit 1", async () => {
     const err = capture("stderr");
     expect(await main(["only-one"])).toBe(1);
