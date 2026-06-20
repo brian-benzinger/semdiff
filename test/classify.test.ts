@@ -62,6 +62,15 @@ describe("classify (ADR-0004)", () => {
     expect(change?.needsReview).toBe(true);
   });
 
+  it("trusts a verdict exactly at the confidence threshold (0.5 is not flagged; below is)", async () => {
+    // MIN_TRUSTED_CONFIDENCE = 0.5; the gate is strict: confidence < 0.5 → needsReview.
+    // Probing the boundary catches a threshold change that tests at 0.2 / 0.9 would miss.
+    const [atBoundary] = await classify([pair("x", "y")], classifierOf({ classification: "substantive", confidence: 0.5 }));
+    expect(atBoundary?.needsReview).toBe(false);
+    const [belowBoundary] = await classify([pair("x", "y")], classifierOf({ classification: "substantive", confidence: 0.4999 }));
+    expect(belowBoundary?.needsReview).toBe(true);
+  });
+
   it("retries a malformed verdict, then accepts a valid one", async () => {
     const good: ClassifierVerdict = { classification: "cosmetic", confidence: 0.8 };
     const [change] = await classify([pair("a", "b")], classifierOf({ classification: "maybe", confidence: 2 }, good));
