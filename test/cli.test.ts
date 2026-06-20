@@ -54,11 +54,18 @@ describe("semdiff CLI (ADR-0002)", () => {
     expect(JSON.parse(out()).summary.byType.move).toBe(1);
   });
 
-  it("accepts --granularity clause", async () => {
-    const [a, b] = twoFiles("Alpha; beta.", "Alpha; beta.");
+  it("passes --granularity clause through to the pipeline — change spans only the modified clause", async () => {
+    // Using identical inputs would pass even if the flag were ignored; use inputs
+    // where the two granularities produce different spans to verify the option
+    // is actually forwarded. At clause granularity only "SECOND CLAUSE." (offset
+    // 14) is a change; at sentence granularity the whole sentence (offset 0) is.
+    const [a, b] = twoFiles("First clause; SECOND CLAUSE.", "First clause; second clause.");
     const out = capture("stdout");
     expect(await main([a, b, "--granularity", "clause"])).toBe(0);
-    expect(JSON.parse(out()).changes).toEqual([]);
+    const result = JSON.parse(out());
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0].classification).toBe("cosmetic");
+    expect(result.changes[0].spanA.start).toBe(14); // second clause starts at offset 14
   });
 
   it("prints usage for --help and exits 0", async () => {
