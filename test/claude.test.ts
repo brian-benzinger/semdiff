@@ -5,7 +5,7 @@
  * and the error paths that the classify stage degrades to needs-review.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { createDefaultClassifier } from "../src/classifiers/claude.ts";
+import { createDefaultClassifier, SYSTEM_PROMPT } from "../src/classifiers/claude.ts";
 import { DEFAULT_MODEL_ID, type CandidatePair } from "../src/classifier.ts";
 
 const PAIR: CandidatePair = { type: "modification", a: "30%", b: "40%", spanA: { start: 0, end: 3 }, spanB: { start: 0, end: 3 } };
@@ -93,6 +93,41 @@ describe("createDefaultClassifier (ADR-0009)", () => {
     expect(body.output_config.format.type).toBe("json_schema");
   });
 
+  it("sends the full SYSTEM_PROMPT as the system message text", async () => {
+    const mock = stubFetch(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    await createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    expect(requestBody(mock).system[0].text).toBe(SYSTEM_PROMPT);
+  });
+
+  it("sets max_tokens to 1024 in the request body", async () => {
+    const mock = stubFetch(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    await createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    expect(requestBody(mock).max_tokens).toBe(1024);
+  });
+
+  it("formats the message content with pair type and both sides verbatim", async () => {
+    const mock = stubFetch(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    await createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    expect(requestBody(mock).messages[0].content).toBe("Change type: modification.\nA:\n30%\n\nB:\n40%");
+  });
+
+  it("uses the correct pair type in the message content for insertions", async () => {
+    const insertionPair: CandidatePair = {
+      type: "insertion", a: "", b: "new obligation",
+      spanA: null, spanB: { start: 0, end: 14 },
+    };
+    const mock = stubFetch(verdictResponse({ classification: "substantive", confidence: 0.9 }));
+    await createDefaultClassifier({ apiKey: "k" }).classify(insertionPair);
+    expect(requestBody(mock).messages[0].content).toBe("Change type: insertion.\nA:\n\n\nB:\nnew obligation");
+  });
+
+  it("sends the required anthropic-version header", async () => {
+    const mock = stubFetch(verdictResponse({ classification: "cosmetic", confidence: 1 }));
+    await createDefaultClassifier({ apiKey: "k" }).classify(PAIR);
+    const headers = requestInit(mock).headers as Record<string, string>;
+    expect(headers["anthropic-version"]).toBe("2023-06-01");
+  });
+
   it("throws on a non-ok HTTP status (retries disabled)", async () => {
     stubFetch(new Response("", { status: 500 }));
     await expect(createDefaultClassifier({ apiKey: "k", maxRetries: 0 }).classify(PAIR)).rejects.toThrow(/Anthropic API error 500/);
@@ -110,6 +145,11 @@ describe("createDefaultClassifier (ADR-0009)", () => {
 
   it("throws when the response carries no text block", async () => {
     stubFetch(jsonResponse({ content: [{ type: "image" }] }));
+    await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow(/no text content/);
+  });
+
+  it("throws when the content array is empty", async () => {
+    stubFetch(jsonResponse({ content: [] }));
     await expect(createDefaultClassifier({ apiKey: "k" }).classify(PAIR)).rejects.toThrow(/no text content/);
   });
 
