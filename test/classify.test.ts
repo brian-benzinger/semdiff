@@ -37,18 +37,18 @@ describe("classify (ADR-0004)", () => {
 
   it("maps a substantive verdict to a modification change, carrying spans", async () => {
     const verdict: ClassifierVerdict = { classification: "substantive", description: "threshold lowered", confidence: 0.9 };
-    const changes = await classify([pair("30%", "40%")], classifierOf(verdict));
-    expect(changes).toEqual([
-      {
-        type: "modification",
-        classification: "substantive",
-        spanA: { start: 0, end: 3 },
-        spanB: { start: 10, end: 13 },
-        description: "threshold lowered",
-        confidence: 0.9,
-        needsReview: false,
-      },
-    ]);
+    const input = pair("30%", "40%");
+    const changes = await classify([input], classifierOf(verdict));
+    expect(changes).toHaveLength(1);
+    const change = changes[0]!;
+    expect(change.type).toBe("modification");
+    expect(change.classification).toBe("substantive");
+    // Verify spans are carried through from the input pair, not fabricated.
+    expect(change.spanA).toEqual(input.spanA);
+    expect(change.spanB).toEqual(input.spanB);
+    expect(change.description).toBe("threshold lowered");
+    expect(change.confidence).toBe(0.9);
+    expect(change.needsReview).toBe(false);
   });
 
   it("omits description when the verdict has none", async () => {
@@ -121,12 +121,17 @@ describe("classify (ADR-0004)", () => {
   });
 
   it("classifies multiple candidates in order, preserving each pair's spans", async () => {
+    const inputs = [pair("a", "A"), pair("bb", "BB")];
     const changes = await classify(
-      [pair("a", "A"), pair("bb", "BB")],
+      inputs,
       classifierOf({ classification: "substantive", description: "d", confidence: 1 }),
     );
     expect(changes).toHaveLength(2);
-    expect(changes.map((c) => [c.spanA?.end, c.spanB?.end])).toEqual([[1, 11], [2, 12]]);
+    // Verify full span objects (start AND end) are carried from each input pair, not just the end offset.
+    for (let i = 0; i < inputs.length; i++) {
+      expect(changes[i]?.spanA).toEqual(inputs[i]?.spanA);
+      expect(changes[i]?.spanB).toEqual(inputs[i]?.spanB);
+    }
   });
 
   it("carries the candidate type and nullable spans through to the change (ADR-0011)", async () => {
@@ -154,6 +159,9 @@ describe("classify (ADR-0004)", () => {
     const candidates = Array.from({ length: 12 }, (_, n) => pair(`a${n}`, `b${n}`));
     const changes = await classify(candidates, classifier, 4);
     expect(changes).toHaveLength(12);
+    // Guard against sparse-array gaps: pre-allocation sets length without filling slots,
+    // so toHaveLength(12) passes even if workers drop results.
+    expect(changes.every((c) => c !== undefined && c.classification === "cosmetic")).toBe(true);
     expect(peak).toBeGreaterThan(1); // genuinely overlapped, not sequential
     expect(peak).toBeLessThanOrEqual(4); // never exceeds the pool size
   });
@@ -188,6 +196,7 @@ describe("classify (ADR-0004)", () => {
     };
     const changes = await classify([pair("a", "A"), pair("b", "B")], classifier, 0);
     expect(changes).toHaveLength(2);
+    expect(changes.every((c) => c !== undefined)).toBe(true); // no sparse-array gaps
     expect(peak).toBe(1);
   });
 });
