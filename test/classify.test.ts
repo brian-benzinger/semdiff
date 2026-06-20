@@ -144,6 +144,26 @@ describe("classify (ADR-0004)", () => {
     expect(deleted?.spanB).toBeNull();
   });
 
+  it("fallback to needs-review preserves type and null spans for one-sided pairs (ADR-0011)", async () => {
+    // The happy-path test above covers toChange(); this covers needsReviewChange() —
+    // the fallback path when no verdict validates — for insertion and deletion types.
+    // A bug that hardcodes "modification" or drops the null span would not be caught
+    // by the existing modification-only fallback tests.
+    const bad = classifierOf({ classification: "invalid", confidence: 2 }); // always invalid
+
+    const [ins] = await classify([pair("", "new clause", "insertion")], bad);
+    expect(ins?.type).toBe("insertion");
+    expect(ins?.spanA).toBeNull();
+    expect(ins?.needsReview).toBe(true);
+    expect(ins?.classification).toBe("substantive");
+
+    const [del] = await classify([pair("old clause", "", "deletion")], bad);
+    expect(del?.type).toBe("deletion");
+    expect(del?.spanB).toBeNull();
+    expect(del?.needsReview).toBe(true);
+    expect(del?.classification).toBe("substantive");
+  });
+
   it("classifies concurrently, bounded by the pool size (ADR-0013)", async () => {
     let inFlight = 0;
     let peak = 0;
