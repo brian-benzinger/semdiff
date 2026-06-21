@@ -24,10 +24,14 @@ describe("StructuredDiff contract (ADR-0006)", () => {
   });
 
   it("a substantive modification carries a description", () => {
-    for (const change of example.changes) {
-      if (change.type === "modification" && change.classification === "substantive") {
-        expect(typeof change.description).toBe("string");
-      }
+    const substantiveMods = example.changes.filter(
+      (c) => c.type === "modification" && c.classification === "substantive",
+    );
+    // Guard: if the fixture has no substantive modifications the loop is vacuous
+    // and would pass even if the description field were absent.
+    expect(substantiveMods.length).toBeGreaterThan(0);
+    for (const change of substantiveMods) {
+      expect(typeof change.description).toBe("string");
     }
   });
 
