@@ -160,9 +160,10 @@ describe("align (ADR-0003)", () => {
     // Verify the changed unit's content appears in a candidate pair — not just that
     // "some candidate exists" (which would pass even if the wrong unit were flagged).
     const candidates = pairs.filter((p) => p.tag === "candidate");
-    expect(candidates.length).toBeGreaterThan(0);
-    expect(candidates.some((p) => p.a?.text === `Clause number ${size / 2}.`)).toBe(true);
-    expect(candidates.some((p) => p.b?.text === "An entirely different clause.")).toBe(true);
+    // Exactly one unit changed — any value other than 1 reveals a misfire in the LCS.
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.a?.text).toBe(`Clause number ${size / 2}.`);
+    expect(candidates[0]?.b?.text).toBe("An entirely different clause.");
   });
 
   it("detects a relocation of identical content as a move with old/new spans", () => {

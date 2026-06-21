@@ -86,7 +86,8 @@ describe("span offset semantics through the full pipeline (ADR-0007)", () => {
     expect(move?.spanB).not.toBeNull();
     const textA = a.slice(move!.spanA!.start, move!.spanA!.end);
     const textB = b.slice(move!.spanB!.start, move!.spanB!.end);
-    expect(textA).toBe(textB);
-    expect(textA.length).toBeGreaterThan(0);
+    // The moved sentence must be reproduced verbatim, not merely be non-empty.
+    expect(textA).toBe("Alpha one.");
+    expect(textB).toBe("Alpha one.");
   });
 });
