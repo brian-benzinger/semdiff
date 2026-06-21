@@ -84,6 +84,16 @@ describe("withCache (ADR-0004)", () => {
     await withCache(classifier, { modelId: "m", promptVersion: "0", cache }).classify(pair("A", "B"));
     expect(calls()).toBe(1);
   });
+
+  it("does not serve a cached verdict when A and B are swapped", async () => {
+    // Ensures the key is direction-sensitive: "X→Y" and "Y→X" are different changes
+    // and must each reach the classifier, not reuse each other's cached verdict.
+    const { classifier, calls } = counting();
+    const cached = withCache(classifier, { modelId: "m", promptVersion: "0" });
+    await cached.classify(pair("X", "Y"));
+    await cached.classify(pair("Y", "X"));
+    expect(calls()).toBe(2);
+  });
 });
 
 describe("createMemoryCache (ADR-0004)", () => {
@@ -106,5 +116,11 @@ describe("cacheKey (ADR-0004)", () => {
 
   it("does not collide when field boundaries shift", () => {
     expect(cacheKey(pair("A B", "C"), "m", "0")).not.toBe(cacheKey(pair("A", "B C"), "m", "0"));
+  });
+
+  it("is direction-sensitive — swapping A and B produces a different key", () => {
+    // A direction-agnostic key (e.g. sorted([a, b])) would collide here and return
+    // the wrong cached verdict: "30% → 40%" and "40% → 30%" are different changes.
+    expect(cacheKey(pair("30%", "40%"), "m", "0")).not.toBe(cacheKey(pair("40%", "30%"), "m", "0"));
   });
 });
