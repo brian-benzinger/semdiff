@@ -40,19 +40,33 @@ describe("diff (ADR-0003, ADR-0006)", () => {
   });
 
   it("classifies an insertion via the injected classifier", async () => {
-    const result = await diff("First one. Third one.", "First one. Second one. Third one.", { classifier: substantive });
+    const b = "First one. Second one. Third one.";
+    const result = await diff("First one. Third one.", b, { classifier: substantive });
     expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]?.type).toBe("insertion");
-    expect(result.changes[0]?.classification).toBe("substantive");
-    expect(result.changes[0]?.spanA).toBeNull();
+    const change = result.changes[0]!;
+    expect(change.type).toBe("insertion");
+    expect(change.classification).toBe("substantive");
+    expect(change.spanA).toBeNull();
+    // The B-side span must be present and extract the inserted sentence verbatim.
+    expect(change.spanB).not.toBeNull();
+    expect(b.slice(change.spanB!.start, change.spanB!.end)).toBe("Second one.");
+    expect(change.needsReview).toBe(false);
     expect(result.summary.byType.insertion).toBe(1);
   });
 
   it("classifies a deletion via the injected classifier", async () => {
-    const result = await diff("First one. Second one. Third one.", "First one. Third one.", { classifier: substantive });
+    const a = "First one. Second one. Third one.";
+    const result = await diff(a, "First one. Third one.", { classifier: substantive });
     expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]?.type).toBe("deletion");
-    expect(result.changes[0]?.spanB).toBeNull();
+    const change = result.changes[0]!;
+    expect(change.type).toBe("deletion");
+    // Classification from the injected classifier must reach the assembled change.
+    expect(change.classification).toBe("substantive");
+    // The A-side span must be present and extract the deleted sentence verbatim.
+    expect(change.spanA).not.toBeNull();
+    expect(a.slice(change.spanA!.start, change.spanA!.end)).toBe("Second one.");
+    expect(change.spanB).toBeNull();
+    expect(change.needsReview).toBe(false);
     expect(result.summary.byType.deletion).toBe(1);
   });
 
@@ -78,7 +92,11 @@ describe("diff (ADR-0003, ADR-0006)", () => {
   it("flags a low-confidence modification for review in the summary", async () => {
     const lowConfidence: Classifier = { classify: async () => ({ classification: "substantive", confidence: 0.1 }) };
     const result = await diff("The cap is 30%.", "The cap is 40%.", { classifier: lowConfidence });
-    expect(result.changes[0]?.needsReview).toBe(true);
+    const change = result.changes[0]!;
+    // Low confidence sets needsReview but must not alter the classification or confidence value.
+    expect(change.needsReview).toBe(true);
+    expect(change.classification).toBe("substantive");
+    expect(change.confidence).toBe(0.1);
     expect(result.summary.needsReview).toBe(1);
   });
 
