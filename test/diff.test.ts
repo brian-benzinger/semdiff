@@ -148,4 +148,29 @@ describe("diff (ADR-0003, ADR-0006)", () => {
     expect(result.changes[0]?.classification).toBe("cosmetic");
     expect(result.summary.byType.move).toBe(1);
   });
+
+  it("forwards classifyConcurrency to classify — sequential at 1 never runs more than one call at a time", async () => {
+    // Guards the option path in diff(): if options?.classifyConcurrency were dropped
+    // from the classify() call, the default pool (DEFAULT_CONCURRENCY=8) would be
+    // used and peak would equal the number of candidates (3), not 1.
+    let inFlight = 0;
+    let peak = 0;
+    const tracking: Classifier = {
+      classify: async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise<void>((resolve) => setTimeout(resolve, 5));
+        inFlight -= 1;
+        return { classification: "substantive", confidence: 0.9 };
+      },
+    };
+    const result = await diff(
+      "First sentence. Second sentence. Third sentence.",
+      "First modified. Second modified. Third modified.",
+      { classifier: tracking, classifyConcurrency: 1 },
+    );
+    expect(result.changes).toHaveLength(3);
+    expect(result.changes.every((c) => c.classification === "substantive")).toBe(true);
+    expect(peak).toBe(1);
+  });
 });
