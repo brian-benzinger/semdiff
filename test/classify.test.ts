@@ -179,9 +179,11 @@ describe("classify (ADR-0004)", () => {
     const candidates = Array.from({ length: 12 }, (_, n) => pair(`a${n}`, `b${n}`));
     const changes = await classify(candidates, classifier, 4);
     expect(changes).toHaveLength(12);
-    // Guard against sparse-array gaps: pre-allocation sets length without filling slots,
-    // so toHaveLength(12) passes even if workers drop results.
-    expect(changes.every((c) => c !== undefined && c.classification === "cosmetic")).toBe(true);
+    // Index-based extraction catches sparse-array holes: every() silently skips holes,
+    // so a dropped result would pass; Array.from by index fails on any gap.
+    expect(Array.from({ length: 12 }, (_, i) => changes[i]?.classification)).toEqual(
+      Array.from({ length: 12 }, () => "cosmetic"),
+    );
     expect(peak).toBeGreaterThan(1); // genuinely overlapped, not sequential
     expect(peak).toBeLessThanOrEqual(4); // never exceeds the pool size
   });
@@ -216,7 +218,9 @@ describe("classify (ADR-0004)", () => {
     };
     const changes = await classify([pair("a", "A"), pair("b", "B")], classifier, 0);
     expect(changes).toHaveLength(2);
-    expect(changes.every((c) => c !== undefined)).toBe(true); // no sparse-array gaps
+    // Index access is hole-aware; every() silently skips sparse-array gaps
+    expect(changes[0]?.classification).toBe("cosmetic");
+    expect(changes[1]?.classification).toBe("cosmetic");
     expect(peak).toBe(1);
   });
 });
