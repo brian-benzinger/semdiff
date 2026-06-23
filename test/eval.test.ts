@@ -9,7 +9,7 @@ import { CORPUS } from "../src/eval/corpus.ts";
 
 describe("eval corpus (ADR-0005)", () => {
   it("is a non-empty, well-formed labeled corpus", () => {
-    expect(CORPUS.length).toBeGreaterThan(0);
+    expect(CORPUS.length).toBeGreaterThanOrEqual(30);
     for (const testCase of CORPUS) {
       expect(typeof testCase.a).toBe("string");
       expect(typeof testCase.b).toBe("string");
@@ -83,5 +83,41 @@ describe("eval scoring (ADR-0005)", () => {
     expect(report.f1).toBe(1);
     expect(report.missedSubstantive).toBe(0);
     expect(report.falseFlags).toBe(0);
+  });
+
+  it("reports zero precision when no substantive is predicted (all missed)", () => {
+    // TP=0, FP=0, FN=1, TN=1.
+    // precision = TP/(TP+FP) = 0/0 → 0 (zero denominator); recall = TP/(TP+FN) = 0/1 → 0.
+    const report = scoreEval([
+      { expected: "substantive", predicted: "cosmetic", confidence: 0.3 }, // FN
+      { expected: "cosmetic",    predicted: "cosmetic", confidence: 0.9 }, // TN
+    ]);
+    expect(report.total).toBe(2);
+    expect(report.accuracy).toBe(0.5);
+    expect(report.precision).toBe(0);
+    expect(report.recall).toBe(0);
+    expect(report.f1).toBe(0);
+    expect(report.missedSubstantive).toBe(1);
+    expect(report.falseFlags).toBe(0);
+    expect(report.meanConfidenceCorrect).toBeCloseTo(0.9);
+    expect(report.meanConfidenceIncorrect).toBeCloseTo(0.3);
+  });
+
+  it("reports zero recall when the corpus has no substantive cases (empty positive class)", () => {
+    // TP=0, FP=1, FN=0, TN=1.
+    // precision = TP/(TP+FP) = 0/1 → 0; recall = TP/(TP+FN) = 0/0 → 0 (zero denominator).
+    const report = scoreEval([
+      { expected: "cosmetic", predicted: "substantive", confidence: 0.8 }, // FP
+      { expected: "cosmetic", predicted: "cosmetic",    confidence: 0.9 }, // TN
+    ]);
+    expect(report.total).toBe(2);
+    expect(report.accuracy).toBe(0.5);
+    expect(report.precision).toBe(0);
+    expect(report.recall).toBe(0);
+    expect(report.f1).toBe(0);
+    expect(report.missedSubstantive).toBe(0);
+    expect(report.falseFlags).toBe(1);
+    expect(report.meanConfidenceCorrect).toBeCloseTo(0.9);
+    expect(report.meanConfidenceIncorrect).toBeCloseTo(0.8);
   });
 });
