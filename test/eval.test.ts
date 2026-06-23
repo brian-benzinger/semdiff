@@ -17,10 +17,16 @@ describe("eval corpus (ADR-0005)", () => {
     }
   });
 
-  it("shapes one-sided cases per ADR-0011 (empty side matches the type)", () => {
+  it("shapes one-sided cases per ADR-0011 (empty side matches the type, non-empty side has content)", () => {
     for (const testCase of CORPUS) {
-      if (testCase.type === "insertion") expect(testCase.a).toBe("");
-      if (testCase.type === "deletion") expect(testCase.b).toBe("");
+      if (testCase.type === "insertion") {
+        expect(testCase.a).toBe("");
+        expect(testCase.b.length).toBeGreaterThan(0);
+      }
+      if (testCase.type === "deletion") {
+        expect(testCase.b).toBe("");
+        expect(testCase.a.length).toBeGreaterThan(0);
+      }
       // A modification (or untyped default) is two-sided: both sides have text.
       if (testCase.type === undefined || testCase.type === "modification") {
         expect(testCase.a.length).toBeGreaterThan(0);
