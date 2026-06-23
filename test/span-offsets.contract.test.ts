@@ -20,8 +20,10 @@ const example = JSON.parse(
 ) as StructuredDiff;
 
 function assertHalfOpen(span: Span): void {
-  expect(Number.isInteger(span.start) && span.start >= 0).toBe(true);
-  expect(Number.isInteger(span.end) && span.end >= span.start).toBe(true);
+  expect(Number.isInteger(span.start)).toBe(true);
+  expect(span.start).toBeGreaterThanOrEqual(0);
+  expect(Number.isInteger(span.end)).toBe(true);
+  expect(span.end).toBeGreaterThanOrEqual(span.start);
 }
 
 describe("span offset semantics (ADR-0007)", () => {

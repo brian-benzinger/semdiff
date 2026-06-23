@@ -170,7 +170,11 @@ describe("diff (ADR-0003, ADR-0006)", () => {
       { classifier: tracking, classifyConcurrency: 1 },
     );
     expect(result.changes).toHaveLength(3);
-    expect(result.changes.every((c) => c.classification === "substantive")).toBe(true);
+    expect(result.changes.map((c) => c.classification)).toEqual([
+      "substantive",
+      "substantive",
+      "substantive",
+    ]);
     expect(peak).toBe(1);
   });
 });
