@@ -82,8 +82,12 @@ describe("span offset semantics through the full pipeline (ADR-0007)", () => {
     const b = "Beta two. Alpha one.";
     const { changes } = await diff(a, b);
     const move = changes.find((c) => c.type === "move");
-    expect(move?.spanA).not.toBeNull();
-    expect(move?.spanB).not.toBeNull();
+    expect(move).toBeDefined();
+    expect(move!.spanA).not.toBeNull();
+    expect(move!.spanB).not.toBeNull();
+    // The spans must be at different offsets: "Alpha one." is at the start of A but
+    // at the end of B (after "Beta two. "), so the positions must differ.
+    expect(move!.spanA!.start).not.toBe(move!.spanB!.start);
     const textA = a.slice(move!.spanA!.start, move!.spanA!.end);
     const textB = b.slice(move!.spanB!.start, move!.spanB!.end);
     // The moved sentence must be reproduced verbatim, not merely be non-empty.
