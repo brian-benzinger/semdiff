@@ -149,6 +149,40 @@ describe("diff (ADR-0003, ADR-0006)", () => {
     expect(result.summary.byType.move).toBe(1);
   });
 
+  it("maps candidates to the correct classified results when trivial-change pairs appear before them", async () => {
+    // "First sentence." → "FIRST SENTENCE." is a trivial-change (cosmetic casing — same
+    // normalized key). "The cap is 30%." → "The cap is 40%." is a candidate (genuinely
+    // different normalized keys). "Last sentence." is unchanged.
+    //
+    // Guards the classifiedIndex bookkeeping in diff()'s assembly loop: trivial-change
+    // entries must NOT increment the index, so the candidate maps to classified[0]
+    // rather than erroneously to classified[1] (undefined). If classifiedIndex were
+    // accidentally incremented for the trivial-change pair, the second change would be
+    // undefined (or the wrong verdict), and the summary counts would be wrong.
+    const a = "First sentence. The cap is 30%. Last sentence.";
+    const b = "FIRST SENTENCE. The cap is 40%. Last sentence.";
+    const result = await diff(a, b, { classifier: substantive });
+    expect(result.changes).toHaveLength(2);
+    const [cosmetic, sub] = result.changes;
+    // First change: cosmetic modification (casing only — no classifier needed).
+    expect(cosmetic?.type).toBe("modification");
+    expect(cosmetic?.classification).toBe("cosmetic");
+    expect(a.slice(cosmetic!.spanA!.start, cosmetic!.spanA!.end)).toBe("First sentence.");
+    expect(b.slice(cosmetic!.spanB!.start, cosmetic!.spanB!.end)).toBe("FIRST SENTENCE.");
+    // Second change: substantive modification from the injected classifier.
+    expect(sub?.type).toBe("modification");
+    expect(sub?.classification).toBe("substantive");
+    expect(a.slice(sub!.spanA!.start, sub!.spanA!.end)).toBe("The cap is 30%.");
+    expect(b.slice(sub!.spanB!.start, sub!.spanB!.end)).toBe("The cap is 40%.");
+    // Full summary: 1 cosmetic + 1 substantive, both modifications, no flags.
+    expect(result.summary).toEqual({
+      substantive: 1,
+      cosmetic: 1,
+      byType: { insertion: 0, deletion: 0, modification: 2, move: 0 },
+      needsReview: 0,
+    });
+  });
+
   it("forwards classifyConcurrency to classify — sequential at 1 never runs more than one call at a time", async () => {
     // Guards the option path in diff(): if options?.classifyConcurrency were dropped
     // from the classify() call, the default pool (DEFAULT_CONCURRENCY=8) would be
