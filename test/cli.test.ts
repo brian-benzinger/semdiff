@@ -8,6 +8,9 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../src/cli.ts";
+import { SCHEMA_VERSION } from "../src/schema.ts";
+import { ENGINE_VERSION, DEFAULT_PROMPT_VERSION } from "../src/version.ts";
+import { DEFAULT_MODEL_ID } from "../src/classifier.ts";
 
 let dir: string | undefined;
 
@@ -44,7 +47,20 @@ describe("semdiff CLI (ADR-0002)", () => {
     expect(await main([a, b])).toBe(0);
     const result = JSON.parse(out());
     expect(result.changes).toEqual([]);
-    expect(typeof result.schemaVersion).toBe("string");
+    // Verify the full output contract (ADR-0006): schema version, summary, and provenance
+    // must all be present and correct — not just that schemaVersion is some string.
+    expect(result.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(result.summary).toEqual({
+      substantive: 0,
+      cosmetic: 0,
+      byType: { insertion: 0, deletion: 0, modification: 0, move: 0 },
+      needsReview: 0,
+    });
+    expect(result.provenance).toEqual({
+      modelId: DEFAULT_MODEL_ID,
+      promptVersion: DEFAULT_PROMPT_VERSION,
+      engineVersion: ENGINE_VERSION,
+    });
   });
 
   it("diffs a relocation as a move without needing the model", async () => {
